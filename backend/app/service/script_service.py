@@ -1,5 +1,5 @@
 import google.generativeai as genai
-from backend.app.config import GEMINI_API_KEY
+from app.config import GEMINI_API_KEY
 import re
 import json
 

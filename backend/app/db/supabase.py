@@ -1,9 +1,13 @@
-import os
-import asyncio
-import asyncpg
-from config import SUPABASE_URL
+# from supabase import create_client
+# import os
+# from config import SUPABASE_URL, SUPABASE_KEY
 
-# Функция для получения соединения
-async def get_connection():
-    conn = await asyncpg.connect(SUPABASE_URL)
-    return conn
+# supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# # Пример: выбрать все записи из существующей таблицы "scripts"
+# response = supabase.table("scripts").select("*").execute()
+# print(response.data)
+
+# # Пример: вставить новую запись
+# new_record = {"title": "Новый сценарий", "text": "Текст"}
+# supabase.table("scripts").insert(new_record).execute()
