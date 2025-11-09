@@ -1,15 +1,19 @@
-# Глобальные исключения
 .DS_Store
 .env
 .env.*
 *.log
 
-# Backend (Python / FastAPI)
-/backend/__pycache__/
-/backend/venv/
-/backend/.venv/
+venv
+.venv
+env
 
-# Frontend (Node / Nuxt.js)
-/frontend/node_modules/
-/frontend/.nuxt/
-/frontend/.output/
+__pycache__/
+*.pyc
+
+node_modules/
+.nuxt/
+.output/
+dist/
+
+.vscode/
+.idea/
