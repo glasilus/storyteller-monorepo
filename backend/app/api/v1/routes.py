@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from api.v1.shemas import ScriptRequest
-from fastapi.service.script_service import generate_script
+from service.script_service import generate_script
+from .shemas import ScriptRequest
 
 router = APIRouter(prefix = "/api/v1")
 
