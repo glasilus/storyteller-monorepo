@@ -4,7 +4,7 @@ import re
 import json
 
 genai.configure(api_key=GEMINI_API_KEY)
-print("Gemini API Key loaded:", GEMINI_API_KEY)
+
 
 async def generate_script(promt: str | None, style: str | None, time: float | None) -> dict:
     """Генерация сценария с помощью Gemini API"""
