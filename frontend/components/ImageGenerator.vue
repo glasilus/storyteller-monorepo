@@ -38,6 +38,10 @@
         </button>
       </div>
 
+      <div v-if="isGenerating" class="text-center p-8">
+        <span class="loading loading-spinner loading-lg text-primary mb-4"></span>
+        <p class="text-sm opacity-70">Генерирую изображение...</p>
+      </div>
       <!-- Состояние отсутствия изображения -->
       <div v-else-if="!imageUrl" class="text-center p-8">
         <div class="text-6xl mb-4 opacity-30">🎨</div>
