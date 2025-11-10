@@ -2,46 +2,50 @@ from supabase import create_client
 from datetime import datetime
 import uuid
 from app.config import SUPABASE_URL, SUPABASE_KEY
-from structlog import get_logger
-
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-## Add scene in project
-def create_project_with_scenes(script: dict, user_id: None) -> str:
+## Get formatted time
+time = datetime.now()
+formatted_time = time.strftime("%Y-%m-%d %H:%M:%S")
 
-    # 1️⃣ Создаём проект
+
+### ADD PROJECT WITH SCENES
+def create_project_with_scenes(script: dict, time: float) -> str:
+
+    # 1️⃣ Создаем проект
     project_data = {
-        "user_id": user_id,
         "title": script.get("title"),
-        "description": script.get("intro"),  # intro → description
-        "render_status": "pending"  # можно по умолчанию
+        "intro": script.get("intro"),
+        "project_time": time,
+        "created_at": formatted_time,
     }
-
 
     res = supabase.table("projects").insert(project_data).execute()
 
 
+    
     project_id = res.data[0]["id"]
 
-    # 2️⃣ Создаём сцены
+    # 2️⃣ Создаём сцену
     scenes_data = []
     for scene in script.get("scenes", []):
         text_content = f"{scene.get('description','')}\n{scene.get('dialogue','')}"
         scenes_data.append({
             "project_id": project_id,
             "scene_number": scene.get("scene_number"),
-            "text": text_content,
-            "visual_prompt": scene.get("description")  # если хочешь
+            "dialogue": scene.get("dialogue"),
+            "visual_prompt": scene.get("description"),
+            "generated_image_url": None,
+            "created_at": formatted_time,
         })
+
 
     if scenes_data:
         res_scenes = supabase.table("scenes").insert(scenes_data).execute()
 
     return project_id
 
- 
 
-## Get project by id
-def get_project_by_id(project_id: str):
-    return {0}
+
+    

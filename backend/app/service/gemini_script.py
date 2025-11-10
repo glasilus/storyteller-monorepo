@@ -32,6 +32,8 @@ async def generate_script(prompt: str | None, genre: str | None, style: str | No
         ]
     }}
 
+    
+
     {f"Стиль видео: {style}." if style else ""}
     """
 
