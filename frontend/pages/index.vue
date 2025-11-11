@@ -3,11 +3,11 @@
     <div class="hero-content text-center">
       <div class="max-w-md">
         <h1 class="text-5xl font-bold">
-          <span class="text-primary">Storyboard</span>
+          <span class="text-primary">Storyteller</span>
           <span class="text-base-content">AI</span>
         </h1>
         <p class="py-6">
-          Генерируй сценарии и визуальные раскадровки за минуты с помощью ИИ
+          Генерируй сториборды и короткие видеоролики за минуты с помощью ИИ
         </p>
         
         <div class="flex gap-4 justify-center flex-col sm:flex-row">

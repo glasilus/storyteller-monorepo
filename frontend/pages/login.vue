@@ -4,8 +4,8 @@
       <div class="hero-content flex-col lg:flex-row-reverse">
         <!-- Левая часть -->
         <div class="text-center lg:text-left">
-          <h1 class="text-5xl font-bold">Storyboard AI</h1>
-          <p class="py-6">Войдите, чтобы создавать сценарии и раскадровки с помощью ИИ</p>
+          <h1 class="text-5xl font-bold">Storyteller AI</h1>
+          <p class="py-6">Войдите, чтобы создавать сценарии и видео с помощью ИИ</p>
         </div>
         
         <!-- Правая часть (форма) -->

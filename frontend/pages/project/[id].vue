@@ -41,6 +41,8 @@
         
         <!-- Настройки -->
         <div class="grid md:grid-cols-2 gap-6 mt-5">
+
+
           <!-- Тон сценария -->
           <div class="bg-base-100 rounded-lg p-4">
             <div class="flex items-center gap-2 mb-2">
@@ -76,6 +78,27 @@
               Как должны выглядеть картинки
             </p>
           </div>
+
+
+          <!-- Продолжительность видео -->
+          <div class="bg-base-100 rounded-lg p-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xl">⏱️</span>
+              <label class="text-sm font-bold">Длительность (сек)</label>
+            </div>
+            <input 
+              v-model.number="project.settings.duration"
+              type="number"
+              class="input input-bordered w-full"
+              placeholder="Например: 30"
+              @blur="saveProject"
+            />
+            <p class="text-xs opacity-60 mt-2">
+              Примерная общая длительность видео
+            </p>
+          </div>
+
+
         </div>
       </div>
       
@@ -159,7 +182,8 @@ const project = ref({
   description: '',
   settings: {
     tone: '',
-    style: ''
+    style: '',
+    duration: 30
   },
   script: null,
   images: {},
@@ -204,7 +228,7 @@ const handleGenerateScript = async () => {
   try {
     const result = await apiGenerateScript(project.value.description, {
       style: project.value.settings.style || 'cinematic',
-      duration: 30
+      duration: project.value.settings.duration || 30
     })
 
     // бэк возвращает { project_id, script }

@@ -2,7 +2,7 @@
   <header class="navbar bg-base-200 shadow-lg sticky top-0 z-50">
     <div class="navbar-start">
       <NuxtLink to="/dashboard" class="btn btn-ghost normal-case text-xl">
-        <span class="text-primary">Storyboard</span>
+        <span class="text-primary">Storyteller</span>
         <span class="text-base-content">AI</span>
       </NuxtLink>
     </div>
