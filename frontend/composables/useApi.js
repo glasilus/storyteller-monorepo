@@ -37,7 +37,7 @@ export const useApi = () => {
     return { Authorization: `Bearer ${session.access_token}` }
   }
 
-  const apiFetch = async (endpoint, options = {}) => {
+  /*const apiFetch = async (endpoint, options = {}) => {
     const headers = await getAuthHeader()
     
     return $fetch(`${config.public.apiBase}${endpoint}`, {
@@ -48,6 +48,46 @@ export const useApi = () => {
         ...options.headers
       }
     })
+  }*/
+
+  const apiFetch = async (endpoint, options = {}) => { //ВРЕМЕННАЯ МЕРА
+    const headers = await getAuthHeader()
+
+    // ❗ 1. Получаем базовый URL (например, 'https://storyteller-monorepo.onrender.com')
+    let baseUrl = config.public.apiBase;
+    
+    // ❗ 2. ГАРАНТИРУЕМ ПРИСУТСТВИЕ ПРЕФИКСА: Добавляем '/api/v1', ес
+    if (!baseUrl.endsWith('/api/v1')) {
+        // Убеждаемся, что baseUrl не заканчивается на слэш, чтобы избежать двойного слэша
+        if (baseUrl.endsWith('/')) {
+            baseUrl = baseUrl.slice(0, -1);
+        }
+        baseUrl = baseUrl + '/api/v1';
+    }
+    
+    // 3. Убеждаемся, что endpoint начинается со слэша
+    const finalEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+    // 4. Формируем полный URL для запроса
+    const fullUrl = baseUrl + finalEndpoint
+    
+    const response = await $fetch(fullUrl, {
+      // Использование fullUrl вместо baseURL
+      ...options,
+      headers: {
+        ...headers,
+        ...options.headers,
+      },
+      // Обработка ошибок
+      onResponseError({ response }) {
+        if (response.status === 401) {
+          // Если 401 Unauthorized, перенаправляем на логин
+          navigateTo('/login');
+        }
+      }
+    })
+
+    return response
   }
 
   // Генерация сценария
