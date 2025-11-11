@@ -47,5 +47,14 @@ def create_project_with_scenes(script: dict, time: float) -> str:
     return project_id
 
 
+def get_project(project_id: str):
+    res = supabase.table("projects").select("*").eq("id", project_id).single().execute()
+    return res.data
+
+def get_project_scenes(project_id: str):
+    res = supabase.table("scenes").select("*").eq("project_id", project_id).order("scene_number").execute()
+    return res.data
+
+
 
     

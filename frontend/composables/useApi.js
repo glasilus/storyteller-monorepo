@@ -52,16 +52,18 @@ export const useApi = () => {
 
   // Генерация сценария
   const generateScript = async (idea, options = {}) => {
+
+    const payload = {
+      prompt: idea,                             // твоя идея текста
+      genre: options.genre || null,            // если не нужно — можно null
+      style: options.style || 'cinematic',
+      time: options.duration || 30             // длительность в секундах (float)
+    }
+
     try {
       return await apiFetch('/script/generate', {
         method: 'POST',
-        body: {
-          idea,
-          tone: options.tone || 'neutral',
-          duration: options.duration || 30,
-          style: options.style || 'cinematic',
-          target_audience: options.targetAudience || 'general'
-        }
+        body: payload
       })
     } catch (error) {
       console.error('Ошибка генерации сценария:', error)

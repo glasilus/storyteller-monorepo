@@ -201,23 +201,28 @@ const handleGenerateScript = async () => {
   }
 
   generatingScript.value = true
-  
   try {
     const result = await apiGenerateScript(project.value.description, {
-      tone: project.value.settings.tone,
-      target_audience: 'general'
+      style: project.value.settings.style || 'cinematic',
+      duration: 30
     })
-    
-    project.value.script = result.script
-    project.value.title = result.script.title || project.value.title
-    
-    project.value.images = {}
-    project.value.imagePrompts = {}
-    
-    await saveProject()
-    showSuccess('Сценарий успешно сгенерирован!')
+
+    // бэк возвращает { project_id, script }
+    if (result?.project_id) {
+      // 1) можно сразу редиректнуть на проект
+      await router.replace(`/project/${result.project_id}`)
+      // 2) дополнительно (на всякий) положим скрипт в память,
+      //    чтобы при первом рендере было что показать до загрузки
+      project.value.script = result.script
+      project.value.title = result.script?.title || project.value.title
+    } else {
+      // fallback если вдруг project_id не пришел
+      project.value.script = result.script
+      project.value.title = result.script?.title || project.value.title
+      showSuccess('Сценарий сгенерирован (ID проекта не получен)')
+    }
   } catch (error) {
-    showError(error.message || 'Не удалось сгенерировать сценарий')
+    showError('Ошибка генерации сценария: ' + error.message)
   } finally {
     generatingScript.value = false
   }
