@@ -34,11 +34,11 @@ export default defineNuxtConfig({
   
   app: {
     head: {
-      title: 'Storyboard AI - Генерация сценариев и раскадровок',
+      title: 'Storyteller AI - Генерация сценариев и видео слопа',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'description', content: 'AI-помощник для быстрого создания сценариев и визуальных раскадровок' }
+        { name: 'description', content: 'AI-помощник для быстрого создания вертикальных видео' }
       ]
     }
   }
