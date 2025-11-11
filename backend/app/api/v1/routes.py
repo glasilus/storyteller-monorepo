@@ -116,7 +116,7 @@ async def generate_images(project_id: str):
 
     
 @router.get("/{project_id}/scenes", response_model=SceneListResponse)
-def get_project_scenes(project_id: str):
+async def get_project_scenes(project_id: str):
     """
     Возвращает все сцены проекта по его UUID.
     Используется фронтом для генерации форм редактирования.
@@ -136,7 +136,7 @@ def get_project_scenes(project_id: str):
 
 
 @router.put("/{project_id}/scenes")
-def update_project_scenes(project_id: str, request: SceneUpdateRequest):
+async def update_project_scenes(project_id: str, request: SceneUpdateRequest):
     """
     Обновляет сцены проекта.
     """
@@ -152,3 +152,36 @@ def update_project_scenes(project_id: str, request: SceneUpdateRequest):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update scenes: {str(e)}")
+
+## Regeneartete images for all scenes
+@router.put("regenerate_images/{project_id}")
+async def regenerate_images(project_id: str):
+    """
+    Регенерирует изображения для всех сцен проекта.
+    """
+    try:
+        scenes = get_visual_promt_by_project(project_id)
+
+        if not scenes:
+            raise HTTPException(status_code=404, detail="No scenes found for this project")
+        
+        result = []
+
+        ## Make and save url for each scene
+        for scene in scenes:
+            promt = scene.get("visual_prompt")
+            image_url = await generate_image(promt)
+            update_scene_image_url(scene["id"], image_url)
+            result.append({
+                "scene_id": scene["id"],
+                "promt": promt,
+                "generated_image_url": image_url
+            })
+
+        return {
+            "project_id": project_id,
+            "scenes": result
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to regenerate images: {str(e)}")
