@@ -1,4 +1,5 @@
 import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 from app.config import GEMINI_API_KEY
 import re
 import json
@@ -10,7 +11,8 @@ async def generate_script(prompt: str | None, genre: str | None, style: str | No
     """Генерация сценария с помощью Gemini API"""
 
     prompt = f"""
-    Сгенерируй JSON с сценарием для видео на тему: "{prompt}".
+    Ты — профессиональный сценарист и эксперт по созданию вирусного контента для вертикальных платформ (TikTok, YouTube Shorts, Reels).
+    Сгенерируй JSON со сценарием для вертикального видео на тему: "{prompt}".
     Жанр видео должен быть: {genre}.
     Стиль видео должен быть: {style}.
     Длительность видео должна быть около {time} секунд.
@@ -42,8 +44,28 @@ async def generate_script(prompt: str | None, genre: str | None, style: str | No
     {f"Стиль видео: {style}." if style else ""}
     """
 
+    safety_settings = [
+        {
+            "category": HarmCategory.HARM_CATEGORY_HARASSMENT,
+            "threshold": HarmBlockThreshold.BLOCK_NONE, 
+        },
+        {
+            "category": HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            "threshold": HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+            "category": HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            "threshold": HarmBlockThreshold.BLOCK_NONE,
+        },
+        {
+            "category": HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            "threshold": HarmBlockThreshold.BLOCK_NONE,
+        },
+    ]
+
     model = genai.GenerativeModel("gemini-2.5-flash")
-    response = await model.generate_content_async(prompt)
+    response = await model.generate_content_async(prompt,
+        safety_settings=safety_settings)
 
     # Убираем обёртку ```json ... ```
     clean_text = re.sub(r"^```json\s*|\s*```$", "", response.text.strip(), flags=re.MULTILINE)
