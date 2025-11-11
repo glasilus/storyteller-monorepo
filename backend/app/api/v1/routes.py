@@ -1,13 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from app.service.gemini_script import generate_script
 from .shemas import ScriptRequest
-from app.db.supa_request import create_project_with_scenes, get_project, get_project_scenes
+from app.db.supa_request import create_project_with_scenes, get_project, get_project_scenes, get_all_projects
+from app.db.auth import get_current_user
 
 
 router = APIRouter(prefix = "/api/v1")
 
 @router.post("/generate-script")
-async def generate_script_endpoint(request: ScriptRequest):
+async def generate_script_endpoint(request: ScriptRequest, 
+    user_id: str = Depends(get_current_user)):
     
     result = await generate_script(request.prompt, request.genre, request.style, request.time)
     
@@ -20,7 +22,8 @@ async def generate_script_endpoint(request: ScriptRequest):
             script=result, 
             time=request.time, 
             genre=request.genre, 
-            style=request.style
+            style=request.style,
+            user_id=user_id
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create project: {str(e)}")
@@ -30,8 +33,18 @@ async def generate_script_endpoint(request: ScriptRequest):
         "script": result
     }
 
+@router.get("/projects")
+async def get_all_projects_endpoint(user_id: str = Depends(get_current_user)): # ❗ Аутентификация
+    # Этот роут необходим для dashboard.vue
+    from app.db.supa_request import get_all_projects # Временный импорт
+    try:
+        projects = get_all_projects() # RLS отфильтрует
+        return projects
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load projects: {str(e)}")
+
 @router.get("/projects/{project_id}")
-async def get_project_endpoint(project_id: str):
+async def get_project_endpoint(project_id: str, user_id: str = Depends(get_current_user)):
     project = get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")

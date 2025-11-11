@@ -1,13 +1,14 @@
 from supabase import create_client
 from datetime import datetime
 import uuid
+from typing import List
 from app.config import SUPABASE_URL, SUPABASE_KEY
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 ### ADD PROJECT WITH SCENES
-def create_project_with_scenes(script: dict, time: float, genre: str | None, style: str | None) -> str:
+def create_project_with_scenes(script: dict, time: float, genre: str | None, style: str | None, user_id: str) -> str:
     formatted_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     # 1️⃣ Создаем проект
@@ -17,7 +18,8 @@ def create_project_with_scenes(script: dict, time: float, genre: str | None, sty
         "project_time": time,
         "created_at": formatted_time,
         "tone": genre,  
-        "style": style
+        "style": style,
+        "user_id": user_id
     }
 
     res = supabase.table("projects").insert(project_data).execute()
@@ -55,6 +57,9 @@ def get_project_scenes(project_id: str):
     res = supabase.table("scenes").select("*").eq("project_id", project_id).order("scene_number").execute()
     return res.data
 
-
+def get_all_projects() -> List[dict]:
+    # RLS отфильтрует по user_id, так что нам не нужно передавать его в аргументах
+    res = supabase.table("projects").select("*").order("created_at", desc=True).execute()
+    return res.data
 
     
