@@ -11,6 +11,7 @@ from app.db.supa_request import (
     update_scene_image_url, 
     update_scene, 
     get_scenes_by_project,
+    delete_project_by_id,
     supabase
 )
 from app.db.auth import get_current_user
@@ -267,3 +268,17 @@ async def regenerate_images(project_id: str, user_id: str = Depends(get_current_
         return {"project_id": project_id, "scenes": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to regenerate images: {str(e)}")
+    
+
+## Delete project by project_id
+@router.delete("/projects/{project_id}")
+async def delete_project_endpoint(project_id: str):
+
+    res = delete_project_by_id(project_id)
+
+    if not res:
+        raise HTTPException(status_code=404, detail="Project not found or already deleted")
+    
+    return {"Project and scenes deleted successfully": project_id}
+        
+    

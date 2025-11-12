@@ -111,3 +111,17 @@ def update_scene(project_id: str, scene_number: int, update_data: dict):
 
     except Exception as e:
         raise RuntimeError(f"Database update failed: {str(e)}")
+    
+
+def delete_project_by_id(project_id: str):
+    try:
+        # Удаляем сцены, связанные с проектом
+        supabase.table("scenes").delete().eq("project_id", project_id).execute()
+        
+        # Удаляем сам проект
+        res = supabase.table("projects").delete().eq("id", project_id).execute()
+        
+        return res.data
+
+    except Exception as e:
+        raise RuntimeError(f"Failed to delete project: {str(e)}")
