@@ -3,6 +3,7 @@ from datetime import datetime
 import uuid
 from typing import List
 from app.config import SUPABASE_URL, SUPABASE_KEY
+from async_lru import alru_cache
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -49,16 +50,22 @@ def create_project_with_scenes(script: dict, user_prompt: str, time: float, genr
 
     return project_id
 
-
-def get_project(project_id: str):
+## Get project by ID and add cache
+@alru_cache()
+async def get_project(project_id: str):
     res = supabase.table("projects").select("*").eq("id", project_id).single().execute()
     return res.data
 
-def get_project_scenes(project_id: str):
+## Get scenes by project ID and add cache
+@alru_cache()
+async def get_project_scenes(project_id: str):
     res = supabase.table("scenes").select("*").eq("project_id", project_id).order("scene_number").execute()
     return res.data
 
-def get_all_projects(user_id: str) -> List[dict]:
+
+## Get all projects by user ID and add cache
+@alru_cache()
+async def get_all_projects(user_id: str) -> List[dict]:
     res = supabase.table("projects")\
         .select("id, title, description, created_at, project_time, tone, style")\
         .eq("user_id", user_id)\
@@ -112,7 +119,7 @@ def update_scene(project_id: str, scene_number: int, update_data: dict):
     except Exception as e:
         raise RuntimeError(f"Database update failed: {str(e)}")
     
-
+## Delete project by ID
 def delete_project_by_id(project_id: str):
     try:
         # Удаляем сцены, связанные с проектом
