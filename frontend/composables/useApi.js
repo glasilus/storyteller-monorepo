@@ -1,88 +1,37 @@
 // composables/useApi.js
-import { z } from 'zod'
-
-// Схемы валидации ответов
-const SceneSchema = z.object({
-  scene_number: z.number(),
-  action: z.string(),
-  dialogues: z.array(z.string()).optional(),
-  voiceover: z.string().optional(),
-  notes: z.string().optional(),
-  duration: z.number().optional()
-})
-
-const ScriptSchema = z.object({
-  title: z.string(),
-  description: z.string(),
-  tone: z.string(),
-  target_audience: z.string().optional(),
-  scenes: z.array(SceneSchema)
-})
-
-const ImageGenerationSchema = z.object({
-  scene_id: z.number(),
-  image_url: z.string(),
-  prompt: z.string(),
-  style: z.string()
-})
-
 export const useApi = () => {
   const config = useRuntimeConfig()
   const supabase = useSupabaseClient() 
 
   const getAuthHeader = async () => {
-    // Получаем сессию через auth клиент
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.access_token) return {}
     return { Authorization: `Bearer ${session.access_token}` }
   }
 
-  /*const apiFetch = async (endpoint, options = {}) => {
+  const apiFetch = async (endpoint, options = {}) => {
     const headers = await getAuthHeader()
+    let baseUrl = config.public.apiBase
     
-    return $fetch(`${config.public.apiBase}${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...headers,
-        ...options.headers
-      }
-    })
-  }*/
-
-  const apiFetch = async (endpoint, options = {}) => { //ВРЕМЕННАЯ МЕРА
-    const headers = await getAuthHeader()
-
-    // ❗ 1. Получаем базовый URL (например, 'https://storyteller-monorepo.onrender.com')
-    let baseUrl = config.public.apiBase;
-    
-    // ❗ 2. ГАРАНТИРУЕМ ПРИСУТСТВИЕ ПРЕФИКСА: Добавляем '/api/v1', ес
     if (!baseUrl.endsWith('/api/v1')) {
-        // Убеждаемся, что baseUrl не заканчивается на слэш, чтобы избежать двойного слэша
         if (baseUrl.endsWith('/')) {
-            baseUrl = baseUrl.slice(0, -1);
+            baseUrl = baseUrl.slice(0, -1)
         }
-        baseUrl = baseUrl + '/api/v1';
+        baseUrl = baseUrl + '/api/v1'
     }
     
-    // 3. Убеждаемся, что endpoint начинается со слэша
-    const finalEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-
-    // 4. Формируем полный URL для запроса
+    const finalEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
     const fullUrl = baseUrl + finalEndpoint
     
     const response = await $fetch(fullUrl, {
-      // Использование fullUrl вместо baseURL
       ...options,
       headers: {
         ...headers,
         ...options.headers,
       },
-      // Обработка ошибок
       onResponseError({ response }) {
         if (response.status === 401) {
-          // Если 401 Unauthorized, перенаправляем на логин
-          navigateTo('/login');
+          navigateTo('/login')
         }
       }
     })
@@ -90,14 +39,13 @@ export const useApi = () => {
     return response
   }
 
-  // Генерация сценария
-  const generateScript = async (idea, options = {}) => {
-
+  // ========== ГЕНЕРАЦИЯ СЦЕНАРИЯ ==========
+  const generateScript = async (request) => {
     const payload = {
-      prompt: idea,                             // твоя идея текста
-      genre: options.genre || null,            // если не нужно — можно null
-      style: options.style || 'cinematic',
-      time: options.duration || 30             // длительность в секундах (float)
+      prompt: request.prompt,
+      genre: request.genre || null,
+      style: request.style || 'cinematic',
+      time: request.time || 30
     }
 
     try {
@@ -111,42 +59,80 @@ export const useApi = () => {
     }
   }
 
-  // Генерация изображения для сцены
-  const generateSceneImage = async (scene, style = 'cinematic') => {
-    try {
-      return await apiFetch('/image/generate', {
-        method: 'POST',
-        body: {
-          scene_description: scene.action,
-          style,
-          scene_number: scene.scene_number
-        }
-      })
-    } catch (error) {
-      console.error('Ошибка генерации изображения:', error)
-      throw new Error(error.data?.detail || 'Не удалось сгенерировать изображение')
-    }
-  }
-
-  // Сохранение проекта
-  const saveProject = async (projectData) => {
-    return await apiFetch('/projects', {
-      method: 'POST',
-      body: projectData
-    })
-  }
-
-  // Получение проектов пользователя
+  // ========== ПОЛУЧЕНИЕ ПРОЕКТОВ ==========
   const getUserProjects = async () => {
     return await apiFetch('/projects')
   }
 
-  // Получение конкретного проекта
+  // ========== ПОЛУЧЕНИЕ ПРОЕКТА ==========
   const getProject = async (id) => {
     return await apiFetch(`/projects/${id}`)
   }
 
-  // Генерация озвучки
+  // ========== ГЕНЕРАЦИЯ ВСЕХ ИЗОБРАЖЕНИЙ (НОВОЕ!) ==========
+  const generateImages = async (projectId) => {
+    try {
+      return await apiFetch(`/generate-image/${projectId}`, {
+        method: 'POST'
+      })
+    } catch (error) {
+      console.error('Ошибка генерации изображений:', error)
+      throw new Error(error.data?.detail || 'Не удалось сгенерировать изображения')
+    }
+  }
+
+  // ========== ОБНОВЛЕНИЕ СЦЕНЫ (НОВОЕ!) ==========
+  const updateScene = async (sceneId, updates) => {
+    try {
+      return await apiFetch(`/scenes/${sceneId}`, {
+        method: 'PUT',
+        body: updates
+      })
+    } catch (error) {
+      console.error('Ошибка обновления сцены:', error)
+      throw new Error(error.data?.detail || 'Не удалось обновить сцену')
+    }
+  }
+
+  // ========== ПЕРЕГЕНЕРАЦИЯ СЦЕНЫ (НОВОЕ!) ==========
+  const regenerateScene = async (sceneId, style = null) => {
+    try {
+      const body = style ? { style } : {}
+      return await apiFetch(`/regenerate-scene/${sceneId}`, {
+        method: 'POST',
+        body
+      })
+    } catch (error) {
+      console.error('Ошибка перегенерации сцены:', error)
+      throw new Error(error.data?.detail || 'Не удалось перегенерировать изображение')
+    }
+  }
+
+  // ========== ОБНОВЛЕНИЕ МЕТАДАННЫХ ПРОЕКТА (НОВОЕ!) ==========
+  const updateProject = async (projectId, updates) => {
+    try {
+      return await apiFetch(`/projects/${projectId}`, {
+        method: 'PUT',
+        body: updates
+      })
+    } catch (error) {
+      console.error('Ошибка обновления проекта:', error)
+      throw new Error(error.data?.detail || 'Не удалось обновить проект')
+    }
+  }
+
+  // ========== УДАЛЕНИЕ ПРОЕКТА (НОВОЕ!) ==========
+  const deleteProject = async (projectId) => {
+    try {
+      // TODO: Добавить DELETE /projects/{project_id} на бэкенде
+      console.warn('DELETE endpoint не реализован на бэкенде')
+      throw new Error('Функция удаления пока не реализована')
+    } catch (error) {
+      throw new Error(error.message || 'Не удалось удалить проект')
+    }
+  }
+
+  // ========== РЕНДЕРИНГ (для будущего Модуля 2) ==========
   const generateVoiceover = async (projectId, scenes) => {
     try {
       return await apiFetch(`/projects/${projectId}/voiceover`, {
@@ -158,7 +144,6 @@ export const useApi = () => {
     }
   }
   
-  // Запуск рендеринга видео
   const startRender = async (projectId, settings) => {
     try {
       return await apiFetch(`/projects/${projectId}/render`, {
@@ -170,7 +155,6 @@ export const useApi = () => {
     }
   }
   
-  // Получение статуса рендеринга
   const getRenderStatus = async (projectId) => {
     try {
       return await apiFetch(`/projects/${projectId}/status`)
@@ -181,10 +165,13 @@ export const useApi = () => {
 
   return {
     generateScript,
-    generateSceneImage,
-    saveProject,
     getUserProjects,
     getProject,
+    generateImages,        // НОВОЕ
+    updateScene,          // НОВОЕ
+    regenerateScene,      // НОВОЕ
+    updateProject,        // НОВОЕ
+    deleteProject,        // НОВОЕ
     generateVoiceover,
     startRender,
     getRenderStatus

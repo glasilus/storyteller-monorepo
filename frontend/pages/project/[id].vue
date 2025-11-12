@@ -29,21 +29,18 @@
           v-model="project.title"
           class="input input-ghost text-2xl font-bold w-full mb-3"
           placeholder="Название проекта"
-          @blur="saveProject"
+          @blur="saveProjectMetadata"
         />
         <textarea 
           v-model="project.description"
           class="textarea textarea-ghost w-full text-sm"
           placeholder="Ваша идея для видео..."
           rows="2"
-          @blur="saveProject"
+          @blur="saveProjectMetadata"
         ></textarea>
         
         <!-- Настройки -->
-        <div class="grid md:grid-cols-2 gap-6 mt-5">
-
-
-          <!-- Тон сценария -->
+        <div class="grid md:grid-cols-3 gap-4 mt-5">
           <div class="bg-base-100 rounded-lg p-4">
             <div class="flex items-center gap-2 mb-2">
               <span class="text-xl">🎯</span>
@@ -53,15 +50,11 @@
               v-model="project.settings.tone"
               type="text"
               class="input input-bordered w-full"
-              placeholder="Например: юмористический, драматичный, мотивирующий"
-              @blur="saveProject"
+              placeholder="юмористический..."
+              @blur="saveProjectMetadata"
             />
-            <p class="text-xs opacity-60 mt-2">
-              Каким должен быть характер текста
-            </p>
           </div>
           
-          <!-- Визуальный стиль -->
           <div class="bg-base-100 rounded-lg p-4">
             <div class="flex items-center gap-2 mb-2">
               <span class="text-xl">🎨</span>
@@ -71,16 +64,11 @@
               v-model="project.settings.style"
               type="text"
               class="input input-bordered w-full"
-              placeholder="Например: кинематографичный, мультфильм, реалистичный"
-              @blur="saveProject"
+              placeholder="кинематографичный..."
+              @blur="saveProjectMetadata"
             />
-            <p class="text-xs opacity-60 mt-2">
-              Как должны выглядеть картинки
-            </p>
           </div>
 
-
-          <!-- Продолжительность видео -->
           <div class="bg-base-100 rounded-lg p-4">
             <div class="flex items-center gap-2 mb-2">
               <span class="text-xl">⏱️</span>
@@ -90,20 +78,15 @@
               v-model.number="project.settings.duration"
               type="number"
               class="input input-bordered w-full"
-              placeholder="Например: 30"
-              @blur="saveProject"
+              placeholder="30"
+              @blur="saveProjectMetadata"
             />
-            <p class="text-xs opacity-60 mt-2">
-              Примерная общая длительность видео
-            </p>
           </div>
-
-
         </div>
       </div>
       
       <!-- Генерация сценария -->
-      <div v-if="!project.script" class="bg-base-200 rounded-lg p-8 mb-6 text-center">
+      <div v-if="!project.scenes || project.scenes.length === 0" class="bg-base-200 rounded-lg p-8 mb-6 text-center">
         <div class="text-6xl mb-4">✨</div>
         <h2 class="text-2xl font-bold mb-4">Генерация сценария</h2>
         <p class="mb-6 opacity-70">
@@ -127,7 +110,7 @@
           Сгенерируйте визуальную раскадровку для ваших сцен
         </p>
         <button 
-          class="btn btn-secondary"
+          class="btn btn-secondary btn-lg"
           @click="generateAllImages"
           :disabled="generatingImages"
         >
@@ -138,30 +121,30 @@
       
       <!-- Редактор сцен и картинок -->
       <div v-else class="grid lg:grid-cols-2 gap-6">
+        <!-- Левая колонка: Сцены -->
         <div class="space-y-5">
           <h2 class="text-xl font-bold px-1">📋 Сцены</h2>
           <SceneEditor 
-            v-for="scene in project.script.scenes"
-            :key="scene.scene_number"
+            v-for="scene in project.scenes"
+            :key="scene.id"
             :scene="scene"
-            :is-generating-image="imageGenerationStates[scene.scene_number]?.isGenerating"
-            @update="updateScene"
-            @delete="deleteScene(scene.scene_number)"
-            @regenerate-image="handleRegenerateSingleImage"
+            :is-generating-image="imageGenerationStates[scene.id]?.isGenerating"
+            @update="handleUpdateScene"
+            @delete="handleDeleteScene"
+            @regenerate-image="handleRegenerateImage"
           />
         </div>
         
+        <!-- Правая колонка: Картинки -->
         <div>
           <h2 class="text-xl font-bold mb-4 px-1">🖼️ Раскадровка</h2>
-          <div class="space-y-5 max-h-screen overflow-y-auto">
+          <div class="space-y-5 sticky top-4">
             <ImageGenerator
-              v-for="scene in project.script.scenes"
-              :key="`image-${scene.scene_number}`"
-              :scene-number="scene.scene_number"
-              :image-url="project.images[scene.scene_number]"
-              :prompt="project.imagePrompts[scene.scene_number]"
-              :is-generating="imageGenerationStates[scene.scene_number]?.isGenerating"
-              @regenerate="handleRegenerateSingleImage"
+              v-for="scene in project.scenes"
+              :key="`image-${scene.id}`"
+              :scene="scene"
+              :is-generating="imageGenerationStates[scene.id]?.isGenerating"
+              @regenerate="handleRegenerateImage"
             />
           </div>
         </div>
@@ -171,23 +154,30 @@
 </template>
 
 <script setup>
-const { generateScript: apiGenerateScript, generateSceneImage, saveProject: apiSaveProject, getProject } = useApi()
+const { 
+  generateScript: apiGenerateScript, 
+  generateImages: apiGenerateImages, 
+  updateScene: apiUpdateScene, 
+  regenerateScene: apiRegenerateScene,
+  updateProject: apiUpdateProject,
+  getProject: apiGetProject
+} = useApi()
 const { requireAuth } = useSupabaseAuth()
-const { showError, showSuccess } = useNotification() // ВАЖНО: система уведомлений
+const { showError, showSuccess } = useNotification()
 const route = useRoute()
 const router = useRouter()
 
 const project = ref({
+  id: null,
   title: 'Новый проект',
   description: '',
+  intro: '',
   settings: {
     tone: '',
     style: '',
     duration: 30
   },
-  script: null,
-  images: {},
-  imagePrompts: {}
+  scenes: []
 })
 
 const imageGenerationStates = ref({})
@@ -195,12 +185,12 @@ const generatingScript = ref(false)
 const generatingImages = ref(false)
 
 const hasGeneratedImages = computed(() => {
-  return project.value.script && 
-         project.value.images && 
-         Object.keys(project.value.images).length > 0
+  return project.value.scenes && 
+         project.value.scenes.some(scene => scene.generated_image_url)
 })
 
 onMounted(async () => {
+  await requireAuth()
   if (route.params.id !== 'new') {
     await loadProject(route.params.id)
   }
@@ -208,10 +198,15 @@ onMounted(async () => {
 
 const loadProject = async (id) => {
   try {
-    const loadedProject = await getProject(id)
+    const response = await apiGetProject(id)
+    
     project.value = {
-      ...loadedProject,
-      settings: loadedProject.settings || { tone: '', style: '' }
+      id: response.id,
+      title: response.title || 'Проект',
+      description: response.description || '',
+      intro: response.intro || '',
+      settings: response.settings || { tone: '', style: '', duration: 30 },
+      scenes: response.scenes || []
     }
   } catch (err) {
     showError('Ошибка загрузки проекта: ' + err.message)
@@ -226,24 +221,17 @@ const handleGenerateScript = async () => {
 
   generatingScript.value = true
   try {
-    const result = await apiGenerateScript(project.value.description, {
+    const result = await apiGenerateScript({
+      prompt: project.value.description,
+      genre: project.value.settings.tone || 'neutral',
       style: project.value.settings.style || 'cinematic',
-      duration: project.value.settings.duration || 30
+      time: project.value.settings.duration || 30
     })
 
-    // бэк возвращает { project_id, script }
     if (result?.project_id) {
-      // 1) можно сразу редиректнуть на проект
       await router.replace(`/project/${result.project_id}`)
-      // 2) дополнительно (на всякий) положим скрипт в память,
-      //    чтобы при первом рендере было что показать до загрузки
-      project.value.script = result.script
-      project.value.title = result.script?.title || project.value.title
-    } else {
-      // fallback если вдруг project_id не пришел
-      project.value.script = result.script
-      project.value.title = result.script?.title || project.value.title
-      showSuccess('Сценарий сгенерирован (ID проекта не получен)')
+      await loadProject(result.project_id)
+      showSuccess('Сценарий сгенерирован!')
     }
   } catch (error) {
     showError('Ошибка генерации сценария: ' + error.message)
@@ -253,14 +241,20 @@ const handleGenerateScript = async () => {
 }
 
 const generateAllImages = async () => {
-  if (!project.value.script?.scenes) return
+  if (!project.value.scenes || project.value.scenes.length === 0) return
   
   generatingImages.value = true
   
   try {
-    for (const scene of project.value.script.scenes) {
-      await handleRegenerateSingleImage({ sceneNumber: scene.scene_number })
-    }
+    const result = await apiGenerateImages(project.value.id)
+    
+    result.scenes.forEach(sceneData => {
+      const scene = project.value.scenes.find(s => s.id === sceneData.scene_id)
+      if (scene) {
+        scene.generated_image_url = sceneData.generated_image_url
+      }
+    })
+    
     showSuccess('Все картинки сгенерированы!')
   } catch (error) {
     showError('Ошибка генерации картинок: ' + error.message)
@@ -269,51 +263,71 @@ const generateAllImages = async () => {
   }
 }
 
-const updateScene = (updatedScene) => {
-  const index = project.value.script.scenes.findIndex(s => s.scene_number === updatedScene.scene_number)
-  if (index !== -1) {
-    project.value.script.scenes[index] = updatedScene
-    saveProject()
+const handleUpdateScene = async (updatedScene) => {
+  try {
+    await apiUpdateScene(updatedScene.id, {
+      action: updatedScene.action,
+      dialogue: updatedScene.dialogue,
+      voice_over: updatedScene.voice_over,
+      visual_prompt: updatedScene.visual_prompt
+    })
+    
+    const index = project.value.scenes.findIndex(s => s.id === updatedScene.id)
+    if (index !== -1) {
+      project.value.scenes[index] = { ...project.value.scenes[index], ...updatedScene }
+    }
+  } catch (error) {
+    showError('Ошибка обновления сцены: ' + error.message)
   }
 }
 
-const deleteScene = (sceneNumber) => {
+const handleDeleteScene = async (sceneId) => {
   if (!confirm('Удалить сцену?')) return
   
-  project.value.script.scenes = project.value.script.scenes.filter(s => s.scene_number !== sceneNumber)
-  project.value.script.scenes.forEach((scene, index) => {
-    scene.scene_number = index + 1
-  })
-  saveProject()
+  try {
+    project.value.scenes = project.value.scenes.filter(s => s.id !== sceneId)
+    
+    project.value.scenes.forEach((scene, index) => {
+      scene.scene_number = index + 1
+    })
+    
+    showSuccess('Сцена удалена')
+  } catch (error) {
+    showError('Ошибка удаления сцены: ' + error.message)
+  }
 }
 
-const handleRegenerateSingleImage = async ({ sceneNumber, style }) => {
-  const scene = project.value.script.scenes.find(s => s.scene_number === sceneNumber)
+const handleRegenerateImage = async ({ sceneId, style }) => {
+  const scene = project.value.scenes.find(s => s.id === sceneId)
   if (!scene) return
 
-  imageGenerationStates.value[sceneNumber] = { isGenerating: true }
+  imageGenerationStates.value[sceneId] = { isGenerating: true }
   
   try {
-    const result = await generateSceneImage(scene, style || project.value.settings.style)
-    project.value.images[sceneNumber] = result.image_url
-    project.value.imagePrompts[sceneNumber] = result.prompt
-    showSuccess(`Изображение сцены ${sceneNumber} обновлено!`)
+    const result = await apiRegenerateScene(sceneId, style || null)
+    
+    scene.generated_image_url = result.generated_image_url
+    showSuccess(`Изображение сцены ${scene.scene_number} обновлено!`)
   } catch (error) {
     showError(`Ошибка генерации изображения: ${error.message}`)
   } finally {
-    imageGenerationStates.value[sceneNumber].isGenerating = false
-    saveProject()
+    imageGenerationStates.value[sceneId].isGenerating = false
   }
 }
 
-const saveProject = async () => {
+const saveProjectMetadata = async () => {
+  if (!project.value.id) return
+  
   try {
-    const result = await apiSaveProject(project.value)
-    if (route.params.id === 'new' && result.id) {
-      router.replace(`/project/${result.id}`)
-    }
+    await apiUpdateProject(project.value.id, {
+      title: project.value.title,
+      description: project.value.description,
+      tone: project.value.settings.tone,
+      style: project.value.settings.style,
+      project_time: project.value.settings.duration
+    })
   } catch (error) {
-    showError('Ошибка сохранения проекта: ' + error.message)
+    showError('Ошибка сохранения: ' + error.message)
   }
 }
 </script>
