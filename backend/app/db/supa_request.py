@@ -3,7 +3,6 @@ from datetime import datetime
 import uuid
 from typing import List
 from app.config import SUPABASE_URL, SUPABASE_KEY
-from functools import lru_cache
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -51,20 +50,17 @@ def create_project_with_scenes(script: dict, user_prompt: str, time: float, genr
     return project_id
 
 ## Get project by ID and add cache
-@lru_cache(maxsize=256)
 def get_project(project_id: str):
     res = supabase.table("projects").select("*").eq("id", project_id).single().execute()
     return res.data
 
 ## Get scenes by project ID and add cache
-@lru_cache(maxsize=256)
 def get_project_scenes(project_id: str):
     res = supabase.table("scenes").select("*").eq("project_id", project_id).order("scene_number").execute()
     return res.data
 
 
 ## Get all projects by user ID and add cache
-@lru_cache(maxsize=256)
 def get_all_projects(user_id: str) -> List[dict]:
     res = supabase.table("projects")\
         .select("id, title, description, created_at, project_time, tone, style")\
