@@ -11,6 +11,9 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         origin = request.headers.get("origin")
 
+        print(f"[CORS] Request: {request.method} {request.url.path}")
+        print(f"[CORS] Origin: {origin}")
+
         # Список разрешенных origins
         allowed_origins = [
             "http://localhost:3000",
@@ -19,10 +22,20 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
             "https://storyteller-monorepo.onrender.com",
         ]
 
-        # Разрешаем все поддомены vercel.app
-        if origin and (origin in allowed_origins or origin.endswith(".vercel.app")):
+        # Проверяем origin
+        is_allowed = False
+        if origin:
+            if origin in allowed_origins:
+                is_allowed = True
+                print(f"[CORS] Origin in allowed list")
+            elif origin.endswith(".vercel.app"):
+                is_allowed = True
+                print(f"[CORS] Origin is Vercel subdomain")
+
+        if is_allowed:
             # Для preflight запросов (OPTIONS)
             if request.method == "OPTIONS":
+                print(f"[CORS] Handling OPTIONS preflight")
                 response = Response()
                 response.headers["Access-Control-Allow-Origin"] = origin
                 response.headers["Access-Control-Allow-Credentials"] = "true"
@@ -32,6 +45,7 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
                 return response
 
             # Для обычных запросов
+            print(f"[CORS] Handling regular request")
             response = await call_next(request)
             response.headers["Access-Control-Allow-Origin"] = origin
             response.headers["Access-Control-Allow-Credentials"] = "true"
@@ -39,6 +53,7 @@ class CustomCORSMiddleware(BaseHTTPMiddleware):
             return response
 
         # Если origin не разрешен, продолжаем без CORS headers
+        print(f"[CORS] Origin not allowed, proceeding without CORS headers")
         return await call_next(request)
 
 

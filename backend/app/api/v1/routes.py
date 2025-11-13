@@ -55,12 +55,6 @@ async def generate_script_endpoint(request: ScriptRequest,
 
 
 # ========== ПОЛУЧЕНИЕ ПРОЕКТОВ ==========
-@router.options("/projects")
-async def get_projects_options():
-    """CORS preflight handler"""
-    return {"message": "OK"}
-
-
 @router.get("/projects")
 async def get_all_projects_endpoint(user_id: str = Depends(get_current_user)):
     try:
@@ -71,12 +65,6 @@ async def get_all_projects_endpoint(user_id: str = Depends(get_current_user)):
 
 
 # ========== ПОЛУЧЕНИЕ ПРОЕКТА (ИСПРАВЛЕНО!) ==========
-@router.options("/projects/{project_id}")
-async def get_project_options(project_id: str):
-    """CORS preflight handler"""
-    return {"message": "OK"}
-
-
 @router.get("/projects/{project_id}")
 async def get_project_endpoint(project_id: str, user_id: str = Depends(get_current_user)):
     """
@@ -291,11 +279,6 @@ async def regenerate_images(project_id: str, user_id: str = Depends(get_current_
     
 
 ## Delete scene by scene_id
-@router.options("/scenes/{scene_id}")
-async def delete_scene_options(scene_id: str):
-    """CORS preflight handler"""
-    return {"message": "OK"}
-
 @router.delete("/scenes/{scene_id}")
 async def delete_scene_endpoint(scene_id: str, user_id: str = Depends(get_current_user)):
     """
@@ -328,12 +311,6 @@ async def delete_project_endpoint(project_id: str, user_id: str = Depends(get_cu
 
 
 # ========== МОДУЛЬ 2: ГЕНЕРАЦИЯ ВИДЕО ==========
-
-@router.options("/generate-voiceover/{project_id}")
-async def generate_voiceover_options(project_id: str):
-    """CORS preflight handler"""
-    return {"message": "OK"}
-
 
 @router.post("/generate-voiceover/{project_id}")
 async def generate_voiceover_endpoint(
@@ -425,12 +402,6 @@ async def _render_video_background(
         update_render_status(project_id, "error")
 
 
-@router.options("/render-video/{project_id}")
-async def render_video_options(project_id: str):
-    """CORS preflight handler"""
-    return {"message": "OK"}
-
-
 @router.post("/render-video/{project_id}")
 async def render_video_endpoint(
     project_id: str,
@@ -499,12 +470,6 @@ async def render_video_endpoint(
     except Exception as e:
         update_render_status(project_id, "error")
         raise HTTPException(status_code=500, detail=f"Failed to start rendering: {str(e)}")
-
-
-@router.options("/render-status/{project_id}")
-async def render_status_options(project_id: str):
-    """CORS preflight handler"""
-    return {"message": "OK"}
 
 
 @router.get("/render-status/{project_id}")
