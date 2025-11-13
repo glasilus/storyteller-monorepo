@@ -1,34 +1,33 @@
 // composables/useConfirm.js
-import { ref } from 'vue'
-
-const isOpen = ref(false)
-const dialogTitle = ref('')
-const dialogMessage = ref('')
-const resolveCallback = ref(null)
+let resolveCallback = null
 
 export const useConfirm = () => {
+  const isOpen = useState('confirm-dialog-open', () => false)
+  const dialogTitle = useState('confirm-dialog-title', () => '')
+  const dialogMessage = useState('confirm-dialog-message', () => '')
+
   const confirm = (title, message) => {
     return new Promise((resolve) => {
       dialogTitle.value = title
       dialogMessage.value = message
       isOpen.value = true
-      resolveCallback.value = resolve
+      resolveCallback = resolve
     })
   }
 
   const handleConfirm = () => {
     isOpen.value = false
-    if (resolveCallback.value) {
-      resolveCallback.value(true)
-      resolveCallback.value = null
+    if (resolveCallback) {
+      resolveCallback(true)
+      resolveCallback = null
     }
   }
 
   const handleCancel = () => {
     isOpen.value = false
-    if (resolveCallback.value) {
-      resolveCallback.value(false)
-      resolveCallback.value = null
+    if (resolveCallback) {
+      resolveCallback(false)
+      resolveCallback = null
     }
   }
 
