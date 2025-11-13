@@ -14,6 +14,38 @@ from PIL import Image, ImageDraw, ImageFont
 from app.db.supa_request import supabase
 
 
+def download_from_supabase_or_url(url: str, file_name_hint: str = None) -> bytes:
+    """
+    Скачивает файл из Supabase Storage или по прямому URL
+
+    Args:
+        url: URL файла (может быть публичный или подписанный)
+        file_name_hint: Имя файла в storage (для альтернативного метода)
+
+    Returns:
+        bytes: Содержимое файла
+    """
+    try:
+        # Сначала пробуем скачать по URL
+        response = requests.get(url, timeout=30)
+        response.raise_for_status()
+        return response.content
+    except requests.exceptions.RequestException as e:
+        # Если не получилось по URL - пробуем через SDK
+        if file_name_hint:
+            try:
+                # Извлекаем имя файла из URL если не передано
+                if not file_name_hint and '/videos/' in url:
+                    file_name_hint = url.split('/videos/')[-1].split('?')[0]
+
+                # Скачиваем через Supabase SDK
+                file_data = supabase.storage.from_("videos").download(file_name_hint)
+                return file_data
+            except Exception as sdk_error:
+                raise Exception(f"Failed to download file: URL method failed ({str(e)}), SDK method failed ({str(sdk_error)})")
+        raise Exception(f"Failed to download file from URL: {str(e)}")
+
+
 # Пути к фоновым видео
 BACKGROUND_VIDEOS = {
     "minecraft": "backend/assets/backgrounds/minecraft.mp4",
@@ -84,13 +116,12 @@ async def create_slideshow_video(
         for i, scene in enumerate(valid_scenes):
             image_url = scene.get("generated_image_url")
 
-            # Скачиваем изображение
-            img_response = requests.get(image_url)
-            img_response.raise_for_status()
+            # Скачиваем изображение (безопасным способом)
+            img_content = download_from_supabase_or_url(image_url)
 
             # Сохраняем во временный файл
             temp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-            temp_img.write(img_response.content)
+            temp_img.write(img_content)
             temp_img.close()
             temp_files.append(temp_img.name)
 
@@ -122,19 +153,29 @@ async def create_slideshow_video(
         # Добавляем аудио озвучку, если есть
         if voiceover_url:
             audio_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-            audio_response = requests.get(voiceover_url)
-            audio_response.raise_for_status()
-            audio_temp.write(audio_response.content)
-            audio_temp.close()
-            temp_files.append(audio_temp.name)
 
-            audio_clip = AudioFileClip(audio_temp.name)
+            try:
+                # Скачиваем аудио безопасным способом
+                audio_content = download_from_supabase_or_url(voiceover_url)
+                audio_temp.write(audio_content)
+                audio_temp.close()
+                temp_files.append(audio_temp.name)
+
+                audio_clip = AudioFileClip(audio_temp.name)
+            except Exception as e:
+                # Если не удалось скачать - пропускаем озвучку
+                audio_temp.close()
+                if os.path.exists(audio_temp.name):
+                    os.unlink(audio_temp.name)
+                print(f"Warning: Could not download voiceover: {str(e)}")
+                audio_clip = None
 
             # Подгоняем длительность видео под аудио (если аудио длиннее)
-            if audio_clip.duration > final_video.duration:
+            if audio_clip and audio_clip.duration > final_video.duration:
                 final_video = final_video.set_duration(audio_clip.duration)
 
-            final_video = final_video.set_audio(audio_clip)
+            if audio_clip:
+                final_video = final_video.set_audio(audio_clip)
 
         # Добавляем субтитры, если есть
         if subtitle_content:
@@ -168,9 +209,16 @@ async def create_slideshow_video(
         )
 
         # Получаем публичный URL
-        public_url = supabase.storage.from_("videos").get_public_url(file_name)
-
-        return public_url
+        try:
+            public_url = supabase.storage.from_("videos").get_public_url(file_name)
+            return public_url
+        except Exception:
+            # Fallback: создаем signed URL на 1 год
+            signed_url = supabase.storage.from_("videos").create_signed_url(
+                file_name,
+                expires_in=31536000  # 1 год в секундах
+            )
+            return signed_url['signedURL']
 
     except Exception as e:
         raise Exception(f"Failed to create video: {str(e)}")

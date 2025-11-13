@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from app.service.gemini_script import generate_script
 from app.service.image_script import generate_image
 from app.service.audio_service import generate_voiceover, generate_subtitles, upload_subtitles
-from app.service.video_service import create_slideshow_video
+from app.service.video_service import create_slideshow_video, download_from_supabase_or_url
 from .shemas import ScriptRequest, SceneListResponse, SceneUpdateRequest
 from app.db.supa_request import (
 
@@ -415,10 +415,11 @@ async def render_video_endpoint(
         # Загружаем субтитры если есть
         subtitle_content = None
         if subtitle_url:
-            import requests
-            resp = requests.get(subtitle_url)
-            if resp.status_code == 200:
-                subtitle_content = resp.text
+            try:
+                subtitle_bytes = download_from_supabase_or_url(subtitle_url)
+                subtitle_content = subtitle_bytes.decode('utf-8')
+            except Exception as e:
+                print(f"Warning: Could not download subtitles: {str(e)}")
 
         # Создаем видео
         video_url = await create_slideshow_video(

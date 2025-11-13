@@ -49,9 +49,18 @@ async def generate_voiceover(text: str, lang: str = "ru") -> str:
         os.unlink(temp_path)
 
         # Получаем публичный URL
-        public_url = supabase.storage.from_("videos").get_public_url(file_name)
-
-        return public_url
+        # Если bucket публичный - используем get_public_url
+        # Если приватный - используем signed URL (действует 1 год)
+        try:
+            public_url = supabase.storage.from_("videos").get_public_url(file_name)
+            return public_url
+        except Exception:
+            # Fallback: создаем signed URL на 1 год
+            signed_url = supabase.storage.from_("videos").create_signed_url(
+                file_name,
+                expires_in=31536000  # 1 год в секундах
+            )
+            return signed_url['signedURL']
 
     except Exception as e:
         # Очищаем временный файл в случае ошибки
@@ -128,8 +137,17 @@ async def upload_subtitles(srt_content: str, project_id: str) -> str:
             file_options={"content-type": "text/plain", "upsert": "true"}
         )
 
-        public_url = supabase.storage.from_("videos").get_public_url(file_name)
-        return public_url
+        # Получаем публичный URL
+        try:
+            public_url = supabase.storage.from_("videos").get_public_url(file_name)
+            return public_url
+        except Exception:
+            # Fallback: создаем signed URL на 1 год
+            signed_url = supabase.storage.from_("videos").create_signed_url(
+                file_name,
+                expires_in=31536000  # 1 год в секундах
+            )
+            return signed_url['signedURL']
 
     except Exception as e:
         raise Exception(f"Failed to upload subtitles: {str(e)}")
