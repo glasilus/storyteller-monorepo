@@ -1,18 +1,25 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from app.service.gemini_script import generate_script
 from app.service.image_script import generate_image
+from app.service.audio_service import generate_voiceover, generate_subtitles, upload_subtitles
+from app.service.video_service import create_slideshow_video
 from .shemas import ScriptRequest, SceneListResponse, SceneUpdateRequest
 from app.db.supa_request import (
-    
-    create_project_with_scenes, 
-    get_project, 
-    get_project_scenes, 
-    get_all_projects, 
-    get_visual_promt_by_project, 
-    update_scene_image_url, 
-    update_scene, 
+
+    create_project_with_scenes,
+    get_project,
+    get_project_scenes,
+    get_all_projects,
+    get_visual_promt_by_project,
+    update_scene_image_url,
+    update_scene,
     get_scenes_by_project,
     delete_project_by_id,
+    update_voiceover_url,
+    update_subtitle_url,
+    update_final_video_url,
+    update_render_status,
+    get_project_render_data,
     supabase
 )
 from app.db.auth import get_current_user
@@ -306,4 +313,154 @@ async def delete_project_endpoint(project_id: str, user_id: str = Depends(get_cu
         raise HTTPException(status_code=404, detail="Project not found or already deleted")
 
     return {"success": True, "message": "Project and scenes deleted successfully", "project_id": project_id}
+
+
+# ========== МОДУЛЬ 2: ГЕНЕРАЦИЯ ВИДЕО ==========
+
+@router.post("/generate-voiceover/{project_id}")
+async def generate_voiceover_endpoint(
+    project_id: str,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Генерирует озвучку для проекта на основе voice_over полей сцен
+    """
+    try:
+        # Получаем все сцены проекта
+        scenes = get_project_scenes(project_id)
+
+        if not scenes:
+            raise HTTPException(status_code=404, detail="No scenes found for this project")
+
+        # Обновляем статус
+        update_render_status(project_id, "generating_audio")
+
+        # Собираем текст для озвучки из voice_over полей
+        voiceover_texts = []
+        for scene in sorted(scenes, key=lambda x: x.get("scene_number", 0)):
+            voice_over = scene.get("voice_over", "").strip()
+            if voice_over:
+                voiceover_texts.append(voice_over)
+
+        if not voiceover_texts:
+            raise HTTPException(status_code=400, detail="No voice_over text found in scenes")
+
+        # Объединяем весь текст
+        full_text = " ".join(voiceover_texts)
+
+        # Генерируем озвучку
+        voiceover_url = await generate_voiceover(full_text, lang="ru")
+
+        # Сохраняем URL в БД
+        update_voiceover_url(project_id, voiceover_url)
+
+        # Генерируем субтитры
+        project = get_project(project_id)
+        duration = project.get("project_time", 30.0)
+        srt_content = generate_subtitles(full_text, duration)
+
+        # Загружаем субтитры
+        subtitle_url = await upload_subtitles(srt_content, project_id)
+        update_subtitle_url(project_id, subtitle_url)
+
+        return {
+            "success": True,
+            "project_id": project_id,
+            "voiceover_url": voiceover_url,
+            "subtitle_url": subtitle_url
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        update_render_status(project_id, "error")
+        raise HTTPException(status_code=500, detail=f"Failed to generate voiceover: {str(e)}")
+
+
+@router.post("/render-video/{project_id}")
+async def render_video_endpoint(
+    project_id: str,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Создает финальное видео из сцен проекта (слайд-шоу)
+    """
+    try:
+        # Получаем проект и сцены
+        project = get_project(project_id)
+        scenes = get_project_scenes(project_id)
+
+        if not scenes:
+            raise HTTPException(status_code=404, detail="No scenes found")
+
+        # Проверяем, что у всех сцен есть изображения
+        scenes_with_images = [s for s in scenes if s.get("generated_image_url")]
+
+        if not scenes_with_images:
+            raise HTTPException(status_code=400, detail="No generated images found. Please generate images first.")
+
+        # Обновляем статус
+        update_render_status(project_id, "rendering_video")
+
+        # Получаем данные рендера
+        render_data = get_project_render_data(project_id)
+        voiceover_url = render_data.get("voiceover_url")
+        subtitle_url = render_data.get("subtitle_url")
+        duration = render_data.get("project_time", 30.0)
+
+        # Загружаем субтитры если есть
+        subtitle_content = None
+        if subtitle_url:
+            import requests
+            resp = requests.get(subtitle_url)
+            if resp.status_code == 200:
+                subtitle_content = resp.text
+
+        # Создаем видео
+        video_url = await create_slideshow_video(
+            scenes=scenes_with_images,
+            voiceover_url=voiceover_url,
+            subtitle_content=subtitle_content,
+            total_duration=duration
+        )
+
+        # Сохраняем URL видео
+        update_final_video_url(project_id, video_url)
+        update_render_status(project_id, "completed")
+
+        return {
+            "success": True,
+            "project_id": project_id,
+            "final_video_url": video_url
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        update_render_status(project_id, "error")
+        raise HTTPException(status_code=500, detail=f"Failed to render video: {str(e)}")
+
+
+@router.get("/render-status/{project_id}")
+async def get_render_status_endpoint(
+    project_id: str,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Получает статус рендеринга проекта
+    """
+    try:
+        render_data = get_project_render_data(project_id)
+
+        return {
+            "project_id": project_id,
+            "render_status": render_data.get("render_status"),
+            "voiceover_url": render_data.get("voiceover_url"),
+            "subtitle_url": render_data.get("subtitle_url"),
+            "final_video_url": render_data.get("final_video_url")
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get render status: {str(e)}")
 

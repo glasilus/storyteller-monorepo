@@ -146,20 +146,19 @@ export const useApi = () => {
   }
 
   // ========== РЕНДЕРИНГ (для будущего Модуля 2) ==========
-  const generateVoiceover = async (projectId, scenes) => {
+  const generateVoiceover = async (projectId) => {
     try {
-      return await apiFetch(`/projects/${projectId}/voiceover`, {
-        method: 'POST',
-        body: { scenes }
+      return await apiFetch(`/generate-voiceover/${projectId}`, {
+        method: 'POST'
       })
     } catch (error) {
       throw new Error(error.data?.detail || 'Не удалось сгенерировать озвучку')
     }
   }
-  
+
   const startRender = async (projectId, settings) => {
     try {
-      return await apiFetch(`/projects/${projectId}/render`, {
+      return await apiFetch(`/render-video/${projectId}`, {
         method: 'POST',
         body: settings
       })
@@ -167,10 +166,10 @@ export const useApi = () => {
       throw new Error(error.data?.detail || 'Не удалось запустить рендеринг')
     }
   }
-  
+
   const getRenderStatus = async (projectId) => {
     try {
-      return await apiFetch(`/projects/${projectId}/status`)
+      return await apiFetch(`/render-status/${projectId}`)
     } catch (error) {
       throw new Error(error.data?.detail || 'Не удалось получить статус')
     }

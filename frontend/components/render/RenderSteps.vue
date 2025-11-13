@@ -24,22 +24,21 @@
 
 <script setup>
 const props = defineProps({
-  currentStatus: { type: String, default: 'pending' } // pending, voiceover, rendering, done, failed
+  currentStatus: { type: String, default: 'pending' } // pending, audio_ready, rendering, completed, failed
 })
 
 const steps = [
-  { id: 1, title: 'Озвучка', description: 'Генерация аудио и субтитров', status: 'voiceover' },
-  { id: 2, title: 'Фон', description: 'Подготовка видео-фона', status: 'preparing' },
-  { id: 3, title: 'Сборка', description: 'Синхронизация всех элементов', status: 'rendering' },
-  { id: 4, title: 'Готово', description: 'Видео готово к скачиванию', status: 'done' }
+  { id: 1, title: 'Озвучка', description: 'Генерация аудио и субтитров', status: 'audio_ready' },
+  { id: 2, title: 'Сборка', description: 'Создание слайд-шоу из изображений', status: 'rendering' },
+  { id: 3, title: 'Готово', description: 'Видео готово к скачиванию', status: 'completed' }
 ]
 
 const stepClass = (step) => {
   const status = props.currentStatus
   const stepIndex = steps.findIndex(s => s.status === status)
   const currentIndex = steps.findIndex(s => s.status === step.status)
-  
-  if (currentIndex < stepIndex) return 'step-primary'
+
+  if (currentIndex < stepIndex || status === 'completed') return 'step-primary'
   if (currentIndex === stepIndex) return 'step-accent step-active'
   return ''
 }

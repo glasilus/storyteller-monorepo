@@ -120,11 +120,51 @@ def delete_project_by_id(project_id: str):
     try:
         # Удаляем сцены, связанные с проектом
         supabase.table("scenes").delete().eq("project_id", project_id).execute()
-        
+
         # Удаляем сам проект
         res = supabase.table("projects").delete().eq("id", project_id).execute()
-        
+
         return res.data
 
     except Exception as e:
         raise RuntimeError(f"Failed to delete project: {str(e)}")
+
+
+## Update voiceover URL for project
+def update_voiceover_url(project_id: str, voiceover_url: str):
+    """Обновляет URL озвучки для проекта"""
+    res = supabase.table("projects").update({"voiceover_url": voiceover_url}).eq("id", project_id).execute()
+    return res.data
+
+
+## Update subtitle URL for project
+def update_subtitle_url(project_id: str, subtitle_url: str):
+    """Обновляет URL субтитров для проекта"""
+    res = supabase.table("projects").update({"subtitle_url": subtitle_url}).eq("id", project_id).execute()
+    return res.data
+
+
+## Update final video URL for project
+def update_final_video_url(project_id: str, final_video_url: str):
+    """Обновляет URL финального видео для проекта"""
+    res = supabase.table("projects").update({"final_video_url": final_video_url}).eq("id", project_id).execute()
+    return res.data
+
+
+## Update render status for project
+def update_render_status(project_id: str, status: str):
+    """Обновляет статус рендера для проекта
+
+    Возможные статусы: 'pending', 'generating_audio', 'rendering_video', 'completed', 'error'
+    """
+    res = supabase.table("projects").update({"render_status": status}).eq("id", project_id).execute()
+    return res.data
+
+
+## Get project with voiceover and video data
+def get_project_render_data(project_id: str):
+    """Получает данные проекта для рендеринга (включая URLs озвучки и видео)"""
+    res = supabase.table("projects").select(
+        "id, voiceover_url, subtitle_url, final_video_url, render_status, project_time"
+    ).eq("id", project_id).single().execute()
+    return res.data

@@ -155,6 +155,14 @@ const renderSettings = ref({
   background: 'minecraft'
 })
 
+// Вычисляемое свойство для отображения статуса
+const renderStatus = computed(() => {
+  if (videoUrl.value) return 'completed'
+  if (status.value === 'processing') return 'rendering'
+  if (audioUrl.value) return 'audio_ready'
+  return 'pending'
+})
+
 // Проверка кэша при монтировании
 onMounted(async () => {
   const projectId = route.params.id
@@ -177,16 +185,16 @@ const checkCachedFiles = async () => {
   try {
     const projectId = route.params.id
     const cached = localStorage.getItem(`render_cache_${projectId}`)
-    
+
     if (cached) {
-      const cache = JSON.parse(cache)
-      
+      const cache = JSON.parse(cached)
+
       if (cache.audioUrl && cache.subtitles) {
         audioUrl.value = cache.audioUrl
         subtitles.value = cache.subtitles
         status.value = 'voiceover'
       }
-      
+
       if (cache.videoUrl) {
         videoUrl.value = cache.videoUrl
         status.value = 'done'
@@ -237,14 +245,15 @@ const handleKeyboardShortcuts = (event) => {
 }
 
 const generateVoiceover = async () => {
-  if (!project.value.script) return
-  
+  if (!project.value) return
+
   isGeneratingAudio.value = true
-  
+  error.value = null
+
   try {
-    const result = await apiGenerateVoiceover(route.params.id, project.value.script.scenes)
-    audioUrl.value = result.audio_url
-    subtitles.value = result.subtitles
+    const result = await apiGenerateVoiceover(route.params.id)
+    audioUrl.value = result.voiceover_url
+    subtitles.value = result.subtitle_url
     status.value = 'voiceover'
     updateCache()
   } catch (err) {
@@ -273,24 +282,35 @@ const pollStatus = async (projectId) => {
   const { start, stop } = usePolling(async () => {
     try {
       const result = await getRenderStatus(projectId)
-      status.value = result.status
-      progress.value = result.progress || 0
-      progressText.value = result.progress_text || ''
-      
-      if (result.status === 'done') {
+
+      // Обновляем статус рендера
+      const renderStatus = result.render_status
+
+      // Статусы: 'pending', 'generating_audio', 'rendering_video', 'completed', 'error'
+      if (renderStatus === 'completed') {
         videoUrl.value = result.final_video_url
+        status.value = 'done'
         updateCache()
         stop()
-      } else if (result.status === 'failed') {
-        error.value = result.error
+      } else if (renderStatus === 'error') {
+        error.value = 'Ошибка при рендеринге видео'
+        status.value = 'failed'
         stop()
+      } else {
+        status.value = 'processing'
+        // Можно добавить прогресс бар в зависимости от статуса
+        if (renderStatus === 'generating_audio') {
+          progressText.value = 'Генерация озвучки...'
+        } else if (renderStatus === 'rendering_video') {
+          progressText.value = 'Рендеринг видео...'
+        }
       }
-    } catch (error) {
-      handleError(error, 'pollStatus')
+    } catch (err) {
+      handleError(err, 'pollStatus')
       stop()
     }
   }, 3000)
-  
+
   start()
 }
 </script>

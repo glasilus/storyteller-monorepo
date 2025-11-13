@@ -14,7 +14,7 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   videoUrl: { type: String, default: null },
   title: { type: String, default: 'Готовое видео' }
 })
