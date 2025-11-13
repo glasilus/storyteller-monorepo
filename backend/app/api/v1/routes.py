@@ -272,6 +272,11 @@ async def regenerate_images(project_id: str, user_id: str = Depends(get_current_
     
 
 ## Delete scene by scene_id
+@router.options("/scenes/{scene_id}")
+async def delete_scene_options(scene_id: str):
+    """CORS preflight handler"""
+    return {"message": "OK"}
+
 @router.delete("/scenes/{scene_id}")
 async def delete_scene_endpoint(scene_id: str, user_id: str = Depends(get_current_user)):
     """
