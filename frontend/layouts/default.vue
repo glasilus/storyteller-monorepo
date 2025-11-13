@@ -4,7 +4,7 @@
     <Notification />
 
     <!-- Модальное окно подтверждения -->
-    <ConfirmDialog />
+    <CommonConfirmDialog />
 
     <!-- ЕДИНСТВЕННЫЙ AppHeader на всех страницах -->
     <AppHeader />
