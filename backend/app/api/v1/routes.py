@@ -383,8 +383,15 @@ async def _render_video_background(
     """
     Фоновая задача для рендеринга видео
     """
+    print(f"[RENDER_BG] Starting background render for project: {project_id}")
+    print(f"[RENDER_BG] Scenes count: {len(scenes_with_images)}")
+    print(f"[RENDER_BG] Voiceover URL: {voiceover_url}")
+    print(f"[RENDER_BG] Background style: {background_style}")
+    print(f"[RENDER_BG] Duration: {duration}")
+
     try:
         # Создаем видео
+        print(f"[RENDER_BG] Calling create_slideshow_video...")
         video_url = await create_slideshow_video(
             scenes=scenes_with_images,
             voiceover_url=voiceover_url,
@@ -393,12 +400,17 @@ async def _render_video_background(
             background_style=background_style
         )
 
+        print(f"[RENDER_BG] Video created successfully: {video_url}")
+
         # Сохраняем URL видео
         update_final_video_url(project_id, video_url)
         update_render_status(project_id, "completed")
+        print(f"[RENDER_BG] Render completed!")
 
     except Exception as e:
-        print(f"Background render error: {str(e)}")
+        print(f"[RENDER_BG] Background render error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         update_render_status(project_id, "error")
 
 

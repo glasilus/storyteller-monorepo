@@ -74,18 +74,23 @@ async def create_slideshow_video(
     Returns:
         str: Публичный URL загруженного видео
     """
+    print(f"[VIDEO_SERVICE] Starting video creation")
+    print(f"[VIDEO_SERVICE] Scenes: {len(scenes)}, Duration: {total_duration}, Background: {background_style}")
+
     temp_files = []
     clips = []
 
     try:
         # Фильтруем сцены с изображениями
         valid_scenes = [s for s in scenes if s.get("generated_image_url")]
+        print(f"[VIDEO_SERVICE] Valid scenes with images: {len(valid_scenes)}")
 
         if not valid_scenes:
             raise ValueError("No scenes with generated images found")
 
         # Рассчитываем длительность для каждого изображения
         duration_per_scene = total_duration / len(valid_scenes)
+        print(f"[VIDEO_SERVICE] Duration per scene: {duration_per_scene}s")
 
         # Размеры для вертикального видео 9:16 (1080x1920)
         video_width = 1080
@@ -93,9 +98,11 @@ async def create_slideshow_video(
 
         # Проверяем наличие фонового видео
         background_path = BACKGROUND_VIDEOS.get(background_style)
+        print(f"[VIDEO_SERVICE] Background path: {background_path}")
         background_clip = None
 
         if background_path and os.path.exists(background_path):
+            print(f"[VIDEO_SERVICE] Loading background video: {background_path}")
             # Загружаем фоновое видео
             background_clip = VideoFileClip(background_path)
 
@@ -114,22 +121,28 @@ async def create_slideshow_video(
 
         # Создаем клипы из каждого изображения
         for i, scene in enumerate(valid_scenes):
+            print(f"[VIDEO_SERVICE] Processing scene {i+1}/{len(valid_scenes)}")
             image_url = scene.get("generated_image_url")
+            print(f"[VIDEO_SERVICE] Scene {i+1} image URL: {image_url}")
 
             # Скачиваем изображение (безопасным способом)
+            print(f"[VIDEO_SERVICE] Downloading image for scene {i+1}...")
             img_content = download_from_supabase_or_url(image_url)
+            print(f"[VIDEO_SERVICE] Downloaded {len(img_content)} bytes for scene {i+1}")
 
             # Сохраняем во временный файл
             temp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
             temp_img.write(img_content)
             temp_img.close()
             temp_files.append(temp_img.name)
+            print(f"[VIDEO_SERVICE] Saved scene {i+1} to temp file: {temp_img.name}")
 
             # Обрабатываем изображение - делаем меньше для наложения на фон
             img = Image.open(temp_img.name)
             # Размещаем картинку в верхней части экрана (занимает 60% высоты)
             overlay_height = int(video_height * 0.6)
             overlay_width = int(overlay_height * img.width / img.height)
+            print(f"[VIDEO_SERVICE] Scene {i+1} original size: {img.width}x{img.height}, resizing to: {overlay_width}x{overlay_height}")
 
             img_resized = img.resize((overlay_width, overlay_height), Image.Resampling.LANCZOS)
 
@@ -138,6 +151,7 @@ async def create_slideshow_video(
             img_resized.save(temp_processed.name, quality=95)
             temp_processed.close()
             temp_files.append(temp_processed.name)
+            print(f"[VIDEO_SERVICE] Saved processed scene {i+1} to: {temp_processed.name}")
 
             # Создаем видео клип из изображения
             start_time = i * duration_per_scene
@@ -146,45 +160,63 @@ async def create_slideshow_video(
                    .set_start(start_time)
                    .set_position(("center", 50)))  # Центрируем по горизонтали, сверху
             clips.append(clip)
+            print(f"[VIDEO_SERVICE] Created clip for scene {i+1}, start_time: {start_time}s, duration: {duration_per_scene}s")
 
         # Накладываем все клипы на фоновое видео
+        print(f"[VIDEO_SERVICE] Compositing {len(clips)} clips onto background...")
         final_video = CompositeVideoClip([background_clip] + clips, size=(video_width, video_height))
+        print(f"[VIDEO_SERVICE] Video composition complete, duration: {final_video.duration}s")
 
         # Добавляем аудио озвучку, если есть
         if voiceover_url:
+            print(f"[VIDEO_SERVICE] Adding voiceover from: {voiceover_url}")
             audio_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
 
             try:
                 # Скачиваем аудио безопасным способом
+                print(f"[VIDEO_SERVICE] Downloading voiceover...")
                 audio_content = download_from_supabase_or_url(voiceover_url)
+                print(f"[VIDEO_SERVICE] Downloaded {len(audio_content)} bytes of audio")
                 audio_temp.write(audio_content)
                 audio_temp.close()
                 temp_files.append(audio_temp.name)
 
                 audio_clip = AudioFileClip(audio_temp.name)
+                print(f"[VIDEO_SERVICE] Audio clip loaded, duration: {audio_clip.duration}s")
             except Exception as e:
                 # Если не удалось скачать - пропускаем озвучку
                 audio_temp.close()
                 if os.path.exists(audio_temp.name):
                     os.unlink(audio_temp.name)
-                print(f"Warning: Could not download voiceover: {str(e)}")
+                print(f"[VIDEO_SERVICE] Warning: Could not download voiceover: {str(e)}")
                 audio_clip = None
 
             # Подгоняем длительность видео под аудио (если аудио длиннее)
             if audio_clip and audio_clip.duration > final_video.duration:
+                print(f"[VIDEO_SERVICE] Extending video duration to match audio: {audio_clip.duration}s")
                 final_video = final_video.set_duration(audio_clip.duration)
 
             if audio_clip:
+                print(f"[VIDEO_SERVICE] Setting audio on video...")
                 final_video = final_video.set_audio(audio_clip)
+                print(f"[VIDEO_SERVICE] Audio added successfully")
+        else:
+            print(f"[VIDEO_SERVICE] No voiceover URL provided, skipping audio")
 
         # Добавляем субтитры, если есть
         if subtitle_content:
+            print(f"[VIDEO_SERVICE] Adding subtitles...")
             final_video = add_subtitles_to_video(final_video, subtitle_content)
+            print(f"[VIDEO_SERVICE] Subtitles added")
+        else:
+            print(f"[VIDEO_SERVICE] No subtitles provided, skipping")
 
         # Экспортируем финальное видео
         output_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
         output_temp.close()
         temp_files.append(output_temp.name)
+        print(f"[VIDEO_SERVICE] Starting video export to: {output_temp.name}")
+        print(f"[VIDEO_SERVICE] Export settings: fps=24, codec=libx264, preset=medium, threads=4")
 
         final_video.write_videofile(
             output_temp.name,
@@ -194,43 +226,57 @@ async def create_slideshow_video(
             preset="medium",
             threads=4
         )
+        print(f"[VIDEO_SERVICE] Video export complete!")
 
         # Загружаем в Supabase Storage
         file_name = f"video_{uuid.uuid4()}.mp4"
+        print(f"[VIDEO_SERVICE] Uploading video to Supabase: {file_name}")
 
         with open(output_temp.name, "rb") as f:
             file_data = f.read()
+        print(f"[VIDEO_SERVICE] Read {len(file_data)} bytes from exported video")
 
         # Используем upsert для перезаписи файла если он уже существует
+        print(f"[VIDEO_SERVICE] Uploading to Supabase Storage...")
         res = supabase.storage.from_("videos").upload(
             path=file_name,
             file=file_data,
             file_options={"content-type": "video/mp4", "upsert": "true"}
         )
+        print(f"[VIDEO_SERVICE] Upload complete!")
 
         # Получаем публичный URL
         try:
             public_url = supabase.storage.from_("videos").get_public_url(file_name)
+            print(f"[VIDEO_SERVICE] Got public URL: {public_url}")
             return public_url
-        except Exception:
+        except Exception as e:
             # Fallback: создаем signed URL на 1 год
+            print(f"[VIDEO_SERVICE] get_public_url failed ({str(e)}), falling back to signed URL")
             signed_url = supabase.storage.from_("videos").create_signed_url(
                 file_name,
                 expires_in=31536000  # 1 год в секундах
             )
+            print(f"[VIDEO_SERVICE] Got signed URL: {signed_url['signedURL']}")
             return signed_url['signedURL']
 
     except Exception as e:
+        print(f"[VIDEO_SERVICE] ERROR during video creation: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise Exception(f"Failed to create video: {str(e)}")
 
     finally:
         # Очищаем все временные файлы
+        print(f"[VIDEO_SERVICE] Cleaning up {len(temp_files)} temporary files...")
         for temp_file in temp_files:
             if os.path.exists(temp_file):
                 try:
                     os.unlink(temp_file)
-                except:
-                    pass
+                    print(f"[VIDEO_SERVICE] Deleted temp file: {temp_file}")
+                except Exception as cleanup_error:
+                    print(f"[VIDEO_SERVICE] Failed to delete temp file {temp_file}: {str(cleanup_error)}")
+        print(f"[VIDEO_SERVICE] Cleanup complete")
 
 
 def create_solid_color_image(width: int, height: int, color: tuple) -> str:
