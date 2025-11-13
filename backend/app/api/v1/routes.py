@@ -380,7 +380,7 @@ async def generate_voiceover_endpoint(
 @router.post("/render-video/{project_id}")
 async def render_video_endpoint(
     project_id: str,
-    background_tasks: BackgroundTasks,
+    settings: dict = {},
     user_id: str = Depends(get_current_user)
 ):
     """
@@ -409,6 +409,9 @@ async def render_video_endpoint(
         subtitle_url = render_data.get("subtitle_url")
         duration = render_data.get("project_time", 30.0)
 
+        # Получаем background из настроек
+        background_style = settings.get("background", "minecraft")
+
         # Загружаем субтитры если есть
         subtitle_content = None
         if subtitle_url:
@@ -422,7 +425,8 @@ async def render_video_endpoint(
             scenes=scenes_with_images,
             voiceover_url=voiceover_url,
             subtitle_content=subtitle_content,
-            total_duration=duration
+            total_duration=duration,
+            background_style=background_style
         )
 
         # Сохраняем URL видео

@@ -97,6 +97,18 @@
         </div>
       </div>
       
+      <!-- Шаг 2: Выбор фона -->
+      <div class="bg-base-200 rounded-lg p-6 shadow-lg mb-6">
+        <h2 class="text-xl font-bold mb-4">Шаг 2: Выбор фонового видео</h2>
+        <p class="text-sm opacity-70 mb-4">Выберите brainrot фон для вашего видео</p>
+
+        <BackgroundSelector
+          v-model="renderSettings.background"
+          :disabled="status === 'processing'"
+          class="mb-4"
+        />
+      </div>
+
       <!-- Индикатор прогресса рендера -->
       <RenderProgress
         v-if="progress > 0"
@@ -105,9 +117,9 @@
         class="mb-6"
       />
 
-      <!-- Шаг 2: Сборка видео -->
+      <!-- Шаг 3: Сборка видео -->
       <div class="bg-base-200 rounded-lg p-6 shadow-lg mb-6">
-        <h2 class="text-xl font-bold mb-4">Шаг 2: Сборка видео</h2>
+        <h2 class="text-xl font-bold mb-4">Шаг 3: Сборка видео</h2>
 
         <div v-if="!hasGeneratedImages" class="alert alert-warning mb-4">
           <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
@@ -159,7 +171,9 @@ const error = ref(null)
 const progress = ref(0)
 const progressText = ref('')
 
-const renderSettings = ref({})
+const renderSettings = ref({
+  background: 'minecraft'  // По умолчанию Minecraft
+})
 
 // Вычисляемое свойство для отображения статуса
 const renderStatus = computed(() => {
@@ -279,10 +293,26 @@ const generateVoiceover = async () => {
   try {
     console.log('[generateVoiceover] Calling API for project:', route.params.id)
     const result = await apiGenerateVoiceover(route.params.id)
-    console.log('[generateVoiceover] Success:', result)
+    console.log('[generateVoiceover] API Result:', result)
 
+    // Сохраняем URLs
     audioUrl.value = result.voiceover_url
-    subtitles.value = result.subtitle_url
+    const subtitleUrl = result.subtitle_url
+
+    console.log('[generateVoiceover] Audio URL:', audioUrl.value)
+    console.log('[generateVoiceover] Subtitle URL:', subtitleUrl)
+
+    // Загружаем содержимое субтитров для отображения
+    if (subtitleUrl) {
+      try {
+        const srtResponse = await fetch(subtitleUrl)
+        subtitles.value = await srtResponse.text()
+        console.log('[generateVoiceover] Subtitles loaded')
+      } catch (err) {
+        console.error('[generateVoiceover] Failed to load subtitles:', err)
+      }
+    }
+
     status.value = 'voiceover'
     updateCache()
   } catch (err) {

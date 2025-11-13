@@ -1,30 +1,43 @@
 """
-Сервис для создания видео из изображений (слайд-шоу)
+Сервис для создания видео из изображений (слайд-шоу) с фоновым видео
 """
 import os
 import tempfile
 import uuid
 import requests
 from typing import List, Dict
-from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip, CompositeVideoClip, TextClip
-from PIL import Image
+from moviepy.editor import (
+    ImageClip, VideoFileClip, concatenate_videoclips,
+    AudioFileClip, CompositeVideoClip, TextClip
+)
+from PIL import Image, ImageDraw, ImageFont
 from app.db.supa_request import supabase
+
+
+# Пути к фоновым видео
+BACKGROUND_VIDEOS = {
+    "minecraft": "backend/assets/backgrounds/minecraft.mp4",
+    "subway": "backend/assets/backgrounds/subway.mp4",
+    "abstract": "backend/assets/backgrounds/abstract.mp4",
+}
 
 
 async def create_slideshow_video(
     scenes: List[Dict],
     voiceover_url: str = None,
     subtitle_content: str = None,
-    total_duration: float = 30.0
+    total_duration: float = 30.0,
+    background_style: str = "minecraft"
 ) -> str:
     """
-    Создает слайд-шоу видео из изображений сцен
+    Создает слайд-шоу видео из изображений сцен с фоновым видео
 
     Args:
         scenes: Список сцен с generated_image_url
         voiceover_url: URL аудио озвучки (опционально)
         subtitle_content: Содержимое субтитров в формате SRT (опционально)
         total_duration: Общая длительность видео в секундах
+        background_style: Стиль фонового видео ('minecraft', 'subway', 'abstract')
 
     Returns:
         str: Публичный URL загруженного видео
@@ -46,6 +59,27 @@ async def create_slideshow_video(
         video_width = 1080
         video_height = 1920
 
+        # Проверяем наличие фонового видео
+        background_path = BACKGROUND_VIDEOS.get(background_style)
+        background_clip = None
+
+        if background_path and os.path.exists(background_path):
+            # Загружаем фоновое видео
+            background_clip = VideoFileClip(background_path)
+
+            # Зацикливаем фоновое видео если оно короче нужной длительности
+            if background_clip.duration < total_duration:
+                num_loops = int(total_duration / background_clip.duration) + 1
+                background_clip = background_clip.loop(n=num_loops)
+
+            # Обрезаем до нужной длительности
+            background_clip = background_clip.subclip(0, total_duration)
+        else:
+            # Если нет фонового видео - создаем черный фон
+            black_bg_path = create_solid_color_image(video_width, video_height, (0, 0, 0))
+            temp_files.append(black_bg_path)
+            background_clip = ImageClip(black_bg_path, duration=total_duration)
+
         # Создаем клипы из каждого изображения
         for i, scene in enumerate(valid_scenes):
             image_url = scene.get("generated_image_url")
@@ -60,22 +94,30 @@ async def create_slideshow_video(
             temp_img.close()
             temp_files.append(temp_img.name)
 
-            # Обрабатываем изображение (resize + crop для 9:16)
+            # Обрабатываем изображение - делаем меньше для наложения на фон
             img = Image.open(temp_img.name)
-            img_resized = resize_and_crop(img, video_width, video_height)
+            # Размещаем картинку в верхней части экрана (занимает 60% высоты)
+            overlay_height = int(video_height * 0.6)
+            overlay_width = int(overlay_height * img.width / img.height)
+
+            img_resized = img.resize((overlay_width, overlay_height), Image.Resampling.LANCZOS)
 
             # Сохраняем обработанное изображение
-            temp_processed = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+            temp_processed = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
             img_resized.save(temp_processed.name, quality=95)
             temp_processed.close()
             temp_files.append(temp_processed.name)
 
             # Создаем видео клип из изображения
-            clip = ImageClip(temp_processed.name).set_duration(duration_per_scene)
+            start_time = i * duration_per_scene
+            clip = (ImageClip(temp_processed.name)
+                   .set_duration(duration_per_scene)
+                   .set_start(start_time)
+                   .set_position(("center", 50)))  # Центрируем по горизонтали, сверху
             clips.append(clip)
 
-        # Склеиваем все клипы
-        final_video = concatenate_videoclips(clips, method="compose")
+        # Накладываем все клипы на фоновое видео
+        final_video = CompositeVideoClip([background_clip] + clips, size=(video_width, video_height))
 
         # Добавляем аудио озвучку, если есть
         if voiceover_url:
@@ -140,6 +182,25 @@ async def create_slideshow_video(
                     os.unlink(temp_file)
                 except:
                     pass
+
+
+def create_solid_color_image(width: int, height: int, color: tuple) -> str:
+    """
+    Создает изображение сплошного цвета и возвращает путь к временному файлу
+
+    Args:
+        width: Ширина изображения
+        height: Высота изображения
+        color: RGB цвет (r, g, b)
+
+    Returns:
+        str: Путь к временному файлу
+    """
+    img = Image.new('RGB', (width, height), color)
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+    img.save(temp_file.name, quality=95)
+    temp_file.close()
+    return temp_file.name
 
 
 def resize_and_crop(img: Image.Image, target_width: int, target_height: int) -> Image.Image:
