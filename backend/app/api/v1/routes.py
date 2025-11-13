@@ -3,6 +3,7 @@ from app.service.gemini_script import generate_script
 from app.service.image_script import generate_image
 from .shemas import ScriptRequest, SceneListResponse, SceneUpdateRequest
 from app.db.supa_request import (
+    
     create_project_with_scenes, 
     get_project, 
     get_project_scenes, 
@@ -270,15 +271,34 @@ async def regenerate_images(project_id: str, user_id: str = Depends(get_current_
         raise HTTPException(status_code=500, detail=f"Failed to regenerate images: {str(e)}")
     
 
+## Delete scene by scene_id
+@router.delete("/scenes/{scene_id}")
+async def delete_scene_endpoint(scene_id: str, user_id: str = Depends(get_current_user)):
+    """
+    Delete a scene by ID
+    """
+    try:
+        res = supabase.table("scenes").delete().eq("id", scene_id).execute()
+
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Scene not found or already deleted")
+
+        return {"success": True, "message": "Scene deleted successfully", "scene_id": scene_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete scene: {str(e)}")
+
+
 ## Delete project by project_id
 @router.delete("/projects/{project_id}")
-async def delete_project_endpoint(project_id: str):
+async def delete_project_endpoint(project_id: str, user_id: str = Depends(get_current_user)):
 
     res = delete_project_by_id(project_id)
 
     if not res:
         raise HTTPException(status_code=404, detail="Project not found or already deleted")
-    
-    return {"Project and scenes deleted successfully": project_id}
-        
-    
+
+    return {"success": True, "message": "Project and scenes deleted successfully", "project_id": project_id}
+

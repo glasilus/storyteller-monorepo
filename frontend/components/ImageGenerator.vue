@@ -22,11 +22,11 @@
       </div>
     </div>
 
-    <div class="flex-1 flex items-center justify-center bg-base-300 rounded-lg overflow-hidden">
+    <div class="flex-1 flex items-center justify-center bg-base-300 rounded-lg overflow-hidden relative">
       <!-- Загрузка -->
-      <div v-if="isGenerating" class="text-center p-8">
+      <div v-if="isGenerating || imageLoading" class="text-center p-8">
         <span class="loading loading-spinner loading-lg text-primary mb-4"></span>
-        <p class="text-sm opacity-70">Генерирую изображение...</p>
+        <p class="text-sm opacity-70">{{ imageLoading ? 'Загружаю изображение...' : 'Генерирую изображение...' }}</p>
         <p class="text-xs opacity-50 mt-2">{{ progressText }}</p>
       </div>
 
@@ -46,11 +46,14 @@
       </div>
 
       <!-- Изображение -->
-      <img 
-        v-else 
-        :src="scene.generated_image_url" 
+      <img
+        v-else
+        :src="scene.generated_image_url"
         :alt="`Сцена ${scene.scene_number}`"
         class="max-h-full max-w-full object-contain"
+        @load="handleImageLoad"
+        @error="handleImageError"
+        :style="{ display: imageLoaded ? 'block' : 'none' }"
       />
     </div>
 
@@ -80,25 +83,48 @@ const emit = defineEmits(['regenerate'])
 const selectedStyle = ref('')
 const progressText = ref('Обрабатываю запрос...')
 const error = ref(null)
+const imageLoading = ref(false)
+const imageLoaded = ref(false)
+
+// Отслеживаем изменение URL изображения
+watch(() => props.scene.generated_image_url, (newUrl) => {
+  if (newUrl) {
+    imageLoading.value = true
+    imageLoaded.value = false
+  }
+})
 
 watch(() => props.isGenerating, (newVal) => {
   if (newVal) {
     error.value = null
+    imageLoaded.value = false
     const progress = ['Анализ сцены...', 'Создание промпта...', 'Генерация изображения...', 'Обработка...']
     let i = 0
     const interval = setInterval(() => {
       progressText.value = progress[i % progress.length]
       i++
     }, 800)
-    
+
     setTimeout(() => clearInterval(interval), 60000)
   }
 })
 
+const handleImageLoad = () => {
+  imageLoading.value = false
+  imageLoaded.value = true
+}
+
+const handleImageError = () => {
+  imageLoading.value = false
+  imageLoaded.value = false
+  error.value = 'Не удалось загрузить изображение'
+}
+
 const regenerateWithStyle = () => {
   error.value = null
+  imageLoaded.value = false
   emit('regenerate', {
-    sceneId: props.scene.id,  // ИСПРАВЛЕНО: передаём id вместо номера
+    sceneId: props.scene.id,
     style: selectedStyle.value || null
   })
 }

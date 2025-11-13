@@ -56,6 +56,7 @@
 <script setup>
 const { getUserProjects, deleteProject: apiDeleteProject } = useApi()
 const { showError, showSuccess } = useNotification()
+const { confirm } = useConfirm()
 const router = useRouter()
 
 const projects = ref([])
@@ -89,8 +90,13 @@ const openProject = (id) => {
 }
 
 const deleteProject = async (id) => {
-  if (!confirm('Удалить проект? Это действие нельзя отменить.')) return
-  
+  const confirmed = await confirm(
+    'Удалить проект?',
+    'Это действие нельзя отменить. Все сцены и данные проекта будут удалены.'
+  )
+
+  if (!confirmed) return
+
   try {
     await apiDeleteProject(id)
     showSuccess('Проект удалён')

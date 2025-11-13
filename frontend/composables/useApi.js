@@ -121,14 +121,27 @@ export const useApi = () => {
     }
   }
 
-  // ========== УДАЛЕНИЕ ПРОЕКТА (НОВОЕ!) ==========
+  // ========== УДАЛЕНИЕ СЦЕНЫ ==========
+  const deleteScene = async (sceneId) => {
+    try {
+      return await apiFetch(`/scenes/${sceneId}`, {
+        method: 'DELETE'
+      })
+    } catch (error) {
+      console.error('Ошибка удаления сцены:', error)
+      throw new Error(error.data?.detail || 'Не удалось удалить сцену')
+    }
+  }
+
+  // ========== УДАЛЕНИЕ ПРОЕКТА ==========
   const deleteProject = async (projectId) => {
     try {
-      // TODO: Добавить DELETE /projects/{project_id} на бэкенде
-      console.warn('DELETE endpoint не реализован на бэкенде')
-      throw new Error('Функция удаления пока не реализована')
+      return await apiFetch(`/projects/${projectId}`, {
+        method: 'DELETE'
+      })
     } catch (error) {
-      throw new Error(error.message || 'Не удалось удалить проект')
+      console.error('Ошибка удаления проекта:', error)
+      throw new Error(error.data?.detail || 'Не удалось удалить проект')
     }
   }
 
@@ -167,11 +180,12 @@ export const useApi = () => {
     generateScript,
     getUserProjects,
     getProject,
-    generateImages,        // НОВОЕ
-    updateScene,          // НОВОЕ
-    regenerateScene,      // НОВОЕ
-    updateProject,        // НОВОЕ
-    deleteProject,        // НОВОЕ
+    generateImages,
+    updateScene,
+    regenerateScene,
+    updateProject,
+    deleteScene,          // НОВОЕ
+    deleteProject,
     generateVoiceover,
     startRender,
     getRenderStatus

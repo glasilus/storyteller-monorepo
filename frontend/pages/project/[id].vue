@@ -46,25 +46,29 @@
               <span class="text-xl">🎯</span>
               <label class="text-sm font-bold">Тон сценария</label>
             </div>
-            <input 
+            <input
               v-model="project.settings.tone"
               type="text"
               class="input input-bordered w-full"
               placeholder="юмористический..."
+              :disabled="hasScenes"
+              :class="{ 'opacity-60 cursor-not-allowed': hasScenes }"
               @blur="saveProjectMetadata"
             />
           </div>
-          
+
           <div class="bg-base-100 rounded-lg p-4">
             <div class="flex items-center gap-2 mb-2">
               <span class="text-xl">🎨</span>
               <label class="text-sm font-bold">Визуальный стиль</label>
             </div>
-            <input 
+            <input
               v-model="project.settings.style"
               type="text"
               class="input input-bordered w-full"
               placeholder="кинематографичный..."
+              :disabled="hasScenes"
+              :class="{ 'opacity-60 cursor-not-allowed': hasScenes }"
               @blur="saveProjectMetadata"
             />
           </div>
@@ -74,11 +78,13 @@
               <span class="text-xl">⏱️</span>
               <label class="text-sm font-bold">Длительность (сек)</label>
             </div>
-            <input 
+            <input
               v-model.number="project.settings.duration"
               type="number"
               class="input input-bordered w-full"
               placeholder="30"
+              :disabled="hasScenes"
+              :class="{ 'opacity-60 cursor-not-allowed': hasScenes }"
               @blur="saveProjectMetadata"
             />
           </div>
@@ -92,8 +98,8 @@
         <p class="mb-6 opacity-70">
           Опишите вашу идею выше и нажмите кнопку
         </p>
-        <button 
-          class="btn btn-primary btn-lg" 
+        <button
+          class="btn btn-primary btn-lg"
           @click="handleGenerateScript"
           :disabled="generatingScript"
         >
@@ -101,26 +107,22 @@
           {{ generatingScript ? 'Генерирую...' : '📝 Сгенерировать сценарий' }}
         </button>
       </div>
-      
-      <!-- Блок генерации картинок -->
-      <div v-else-if="!hasGeneratedImages" class="bg-base-200 rounded-lg p-8 mb-6 text-center">
-        <div class="text-5xl mb-3">🎨</div>
-        <h3 class="text-xl font-bold mb-2">Следующий шаг: картинки</h3>
-        <p class="opacity-70 mb-4">
-          Сгенерируйте визуальную раскадровку для ваших сцен
-        </p>
-        <button 
-          class="btn btn-secondary btn-lg"
-          @click="generateAllImages"
-          :disabled="generatingImages"
-        >
-          <span class="loading loading-spinner" v-if="generatingImages"></span>
-          {{ generatingImages ? 'Генерирую...' : 'Сгенерировать все картинки' }}
-        </button>
-      </div>
-      
+
       <!-- Редактор сцен и картинок -->
-      <div v-else class="grid lg:grid-cols-2 gap-6">
+      <div v-else class="space-y-6">
+        <!-- Кнопка генерации всех картинок (если еще не сгенерированы) -->
+        <div v-if="!hasGeneratedImages" class="bg-base-200 rounded-lg p-6 text-center">
+          <button
+            class="btn btn-secondary btn-lg"
+            @click="generateAllImages"
+            :disabled="generatingImages"
+          >
+            <span class="loading loading-spinner" v-if="generatingImages"></span>
+            {{ generatingImages ? 'Генерирую картинки...' : '🎨 Сгенерировать все картинки' }}
+          </button>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6">
         <!-- Левая колонка: Сцены -->
         <div class="space-y-5">
           <h2 class="text-xl font-bold px-1">📋 Сцены</h2>
@@ -148,22 +150,25 @@
             />
           </div>
         </div>
+        </div>
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
-const { 
-  generateScript: apiGenerateScript, 
-  generateImages: apiGenerateImages, 
-  updateScene: apiUpdateScene, 
+const {
+  generateScript: apiGenerateScript,
+  generateImages: apiGenerateImages,
+  updateScene: apiUpdateScene,
   regenerateScene: apiRegenerateScene,
   updateProject: apiUpdateProject,
-  getProject: apiGetProject
+  getProject: apiGetProject,
+  deleteScene: apiDeleteScene
 } = useApi()
 const { requireAuth } = useSupabaseAuth()
 const { showError, showSuccess } = useNotification()
+const { confirm } = useConfirm()
 const route = useRoute()
 const router = useRouter()
 
@@ -184,8 +189,12 @@ const imageGenerationStates = ref({})
 const generatingScript = ref(false)
 const generatingImages = ref(false)
 
+const hasScenes = computed(() => {
+  return project.value.scenes && project.value.scenes.length > 0
+})
+
 const hasGeneratedImages = computed(() => {
-  return project.value.scenes && 
+  return project.value.scenes &&
          project.value.scenes.some(scene => scene.generated_image_url)
 })
 
@@ -282,15 +291,22 @@ const handleUpdateScene = async (updatedScene) => {
 }
 
 const handleDeleteScene = async (sceneId) => {
-  if (!confirm('Удалить сцену?')) return
-  
+  const confirmed = await confirm(
+    'Удалить сцену?',
+    'Это действие нельзя отменить. Сцена будет удалена из проекта.'
+  )
+
+  if (!confirmed) return
+
   try {
+    await apiDeleteScene(sceneId)
+
     project.value.scenes = project.value.scenes.filter(s => s.id !== sceneId)
-    
+
     project.value.scenes.forEach((scene, index) => {
       scene.scene_number = index + 1
     })
-    
+
     showSuccess('Сцена удалена')
   } catch (error) {
     showError('Ошибка удаления сцены: ' + error.message)
