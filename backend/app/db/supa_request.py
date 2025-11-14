@@ -144,6 +144,13 @@ def update_subtitle_url(project_id: str, subtitle_url: str):
     return res.data
 
 
+## Update project time (duration)
+def update_project_time(project_id: str, project_time: float):
+    """Обновляет длительность проекта в секундах"""
+    res = supabase.table("projects").update({"project_time": project_time}).eq("id", project_id).execute()
+    return res.data
+
+
 ## Update final video URL for project
 def update_final_video_url(project_id: str, final_video_url: str):
     """Обновляет URL финального видео для проекта"""

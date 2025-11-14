@@ -5,7 +5,6 @@ from app.service.audio_service import generate_voiceover, generate_subtitles, up
 from app.service.video_service import create_slideshow_video, download_from_supabase_or_url
 from .shemas import ScriptRequest, SceneListResponse, SceneUpdateRequest
 from app.db.supa_request import (
-
     create_project_with_scenes,
     get_project,
     get_project_scenes,
@@ -17,6 +16,7 @@ from app.db.supa_request import (
     delete_project_by_id,
     update_voiceover_url,
     update_subtitle_url,
+    update_project_time,
     update_final_video_url,
     update_render_status,
     get_project_render_data,
@@ -356,18 +356,36 @@ async def generate_voiceover_endpoint(
         # Обновляем статус
         update_render_status(project_id, "generating_audio")
 
-        # Собираем текст для озвучки из voice_over полей
-        voiceover_texts = []
+        # Собираем текст для озвучки из voice_over И dialogue полей
+        # Порядок: сначала voice_over (закадровый голос), потом dialogue (реплики персонажей)
+        # Между ними добавляем паузу
+        voiceover_parts = []
+
         for scene in sorted(scenes, key=lambda x: x.get("scene_number", 0)):
+            scene_text = []
+
+            # Закадровый голос
             voice_over = scene.get("voice_over", "").strip()
             if voice_over:
-                voiceover_texts.append(voice_over)
+                scene_text.append(voice_over)
 
-        if not voiceover_texts:
-            raise HTTPException(status_code=400, detail="No voice_over text found in scenes")
+            # Диалоги персонажей (после паузы)
+            dialogue = scene.get("dialogue", "").strip()
+            if dialogue:
+                # Добавляем небольшую паузу перед диалогом если есть закадровый текст
+                if voice_over:
+                    scene_text.append("...")  # Пауза ~0.5 сек в TTS
+                scene_text.append(dialogue)
 
-        # Объединяем весь текст
-        full_text = " ".join(voiceover_texts)
+            # Объединяем текст сцены
+            if scene_text:
+                voiceover_parts.append(" ".join(scene_text))
+
+        if not voiceover_parts:
+            raise HTTPException(status_code=400, detail="No voice_over or dialogue text found in scenes")
+
+        # Объединяем весь текст с паузами между сценами
+        full_text = ". ".join(voiceover_parts)
 
         # Генерируем озвучку
         voiceover_url = await generate_voiceover(full_text, lang="ru")
@@ -375,10 +393,34 @@ async def generate_voiceover_endpoint(
         # Сохраняем URL в БД
         update_voiceover_url(project_id, voiceover_url)
 
-        # Генерируем субтитры
-        project = get_project(project_id)
-        duration = project.get("project_time", 30.0)
-        srt_content = generate_subtitles(full_text, duration)
+        # ВАЖНО: Получаем реальную длительность аудио для точных субтитров
+        # Скачиваем аудио и определяем длительность
+        print(f"[VOICEOVER] Getting audio duration for subtitles...")
+        from app.service.video_service import download_from_supabase_or_url, get_audio_duration
+        import tempfile
+        import os
+
+        try:
+            audio_content = download_from_supabase_or_url(voiceover_url)
+            audio_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            audio_temp.write(audio_content)
+            audio_temp.close()
+
+            # Получаем длительность
+            actual_duration = get_audio_duration(audio_temp.name)
+            print(f"[VOICEOVER] Audio duration: {actual_duration}s")
+
+            # Удаляем временный файл
+            os.unlink(audio_temp.name)
+
+            # Обновляем project_time в базе
+            update_project_time(project_id, actual_duration)
+        except Exception as e:
+            print(f"[VOICEOVER] Warning: Could not get audio duration: {str(e)}, using default")
+            actual_duration = 30.0
+
+        # Генерируем субтитры с реальной длительностью
+        srt_content = generate_subtitles(full_text, actual_duration)
 
         # Загружаем субтитры
         subtitle_url = await upload_subtitles(srt_content, project_id)
