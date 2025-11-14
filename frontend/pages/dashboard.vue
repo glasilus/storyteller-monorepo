@@ -4,15 +4,13 @@
     @mousemove="handleMouseMove"
     @mouseleave="handleMouseLeave"
   >
-    <!-- Van Gogh-текстура (гарантированно работает) -->
-    <div 
-      class="absolute inset-0 z-0"
-      :style="{ 
-        backgroundImage: `url('${brushTexture}')`,
-        backgroundSize: '300px 300px',
-        opacity: 0.9
-      }"
-    ></div>
+    <!-- Van Gogh "холст" -->
+    <div class="absolute inset-0 z-0 opacity-30">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%, rgba(253,224,71,0.03), transparent_40%)]"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%, rgba(139,92,246,0.02), transparent_50%)]"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_20%, rgba(56,189,248,0.02), transparent_45%)]"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_30%_80%, rgba(253,224,71,0.015), transparent_55%)]"></div>
+    </div>
 
     <!-- Параллакс-облака -->
     <div 
