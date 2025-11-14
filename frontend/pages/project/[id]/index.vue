@@ -354,7 +354,7 @@ const generateAllImages = async () => {
         console.log('[pollImages] Checking for updated images...')
 
         // Перезагружаем проект чтобы получить обновлённые URL картинок
-        const updatedProject = await api.getProject(project.value.id)
+        const updatedProject = await apiGetProject(project.value.id)
 
         // Обновляем URL картинок
         let allGenerated = true
