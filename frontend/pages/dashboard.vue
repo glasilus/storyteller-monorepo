@@ -1,53 +1,105 @@
 <template>
-  <div>
-    <Notification />
-    
-    <main class="container mx-auto px-4 py-6 max-w-7xl">
-      <!-- Шапка -->
-      <div class="flex justify-between items-center mb-8">
-        <h1 class="text-4xl font-bold">Мои проекты</h1>
+  <div 
+    class="min-h-screen relative overflow-hidden"
+    @mousemove="handleMouseMove"
+    @mouseleave="handleMouseLeave"
+  >
+    <!-- Основа фона -->
+    <div class="absolute inset-0 bg-[#0b0e1a]"></div>
+
+    <!-- Текстура мазков -->
+    <div 
+      class="absolute inset-0 opacity-8"
+      style="background-image: url('image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Cpath d=%22M20,60 Q40,40 60,60 T100,60 Q120,40 140,60%22 stroke=%22rgba(253,224,71,0.07)%22 stroke-width=%221%22 fill=%22none%22/%3E%3Cpath d=%22M10,100 Q30,80 50,100 T90,100 Q110,80 130,100%22 stroke=%22rgba(139,92,246,0.05)%22 stroke-width=%220.8%22 fill=%22none%22/%3E%3Cpath d=%22M30,140 Q50,120 70,140 T110,140%22 stroke=%22rgba(56,189,248,0.04)%22 stroke-width=%220.6%22 fill=%22none%22/%3E%3C/svg%3E'); background-size: 400px 400px;"
+    ></div>
+
+    <!-- Параллакс-облака -->
+    <div 
+      class="absolute w-80 h-40 rounded-full opacity-20"
+      :style="{
+        background: 'radial-gradient(circle, rgba(253, 224, 71, 0.15) 0%, transparent 70%)',
+        top: `${cloud1.y}px`,
+        left: `${cloud1.x}px`,
+        transform: `scale(${1 + mouseIntensity * 0.2})`
+      }"
+    ></div>
+    <div 
+      class="absolute w-72 h-36 rounded-full opacity-15"
+      :style="{
+        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%)',
+        top: `${cloud2.y}px`,
+        left: `${cloud2.x}px`,
+        transform: `scale(${1 + mouseIntensity * 0.15})`
+      }"
+    ></div>
+
+    <!-- Свечение под курсором -->
+    <div 
+      class="absolute inset-0 opacity-15"
+      :style="{
+        background: `radial-gradient(circle at ${mousePosition.x}px ${mousePosition.y}px, rgba(253, 224, 71, 0.08) 0%, transparent 60%)`
+      }"
+    ></div>
+
+    <!-- Контент -->
+    <main class="container mx-auto px-4 py-8 max-w-7xl relative z-10">
+      <Notification />
+
+      <div class="flex justify-between items-center mb-10">
+        <h1 class="text-3xl font-bold text-slate-100">Мои проекты</h1>
         <button 
-          class="btn btn-primary btn-lg"
+          class="btn btn-van-gogh-primary px-6 py-3 rounded-xl font-medium flex items-center gap-2"
           @click="createNewProject"
         >
-          ➕ Новый проект
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Новый проект
         </button>
       </div>
 
-      <!-- Ошибка загрузки -->
-      <div v-if="error" class="alert alert-error mb-6">
-        <span>❌ {{ error }}</span>
+      <div v-if="error" class="mb-6 p-4 rounded-xl bg-red-900/30 border border-red-500/40 text-red-200">
+        {{ error }}
       </div>
 
-      <!-- Список проектов -->
+      <!-- Список проектов с анимацией -->
       <div v-if="!loading && projects.length > 0" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <ProjectCard 
-          v-for="project in projects"
+          v-for="(project, index) in projects"
           :key="project.id"
           :project="project"
-          @click="openProject(project.id)"
+          :is-loading="loading"
           @delete="deleteProject(project.id)"
+          class="project-item"
+          :style="{ animationDelay: `${Math.min(0.5, index * 0.05)}s` }"
         />
       </div>
 
       <!-- Пустое состояние -->
-      <div v-else-if="!loading && projects.length === 0" class="bg-base-200 rounded-lg p-12 text-center">
-        <div class="text-6xl mb-4">🎬</div>
-        <h2 class="text-2xl font-bold mb-4">У вас пока нет проектов</h2>
-        <p class="mb-6 opacity-70">
-          Создайте свой первый проект и начните создавать истории
-        </p>
-        <button 
-          class="btn btn-primary btn-lg"
-          @click="createNewProject"
-        >
-          Создать проект
-        </button>
+      <div v-else-if="!loading && projects.length === 0" class="fade-in-up">
+        <div class="bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-12 text-center max-w-2xl mx-auto">
+          <div class="inline-block mb-6">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" class="text-yellow-400/60">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </div>
+          <h2 class="text-2xl font-bold text-slate-100 mb-3">Пока нет проектов</h2>
+          <p class="text-slate-300 mb-6">
+            Создайте свой первый проект — и начните превращать идеи в сториборды и видео.
+          </p>
+          <button 
+            class="btn btn-van-gogh-primary px-6 py-3 rounded-xl font-medium mx-auto flex items-center gap-2"
+            @click="createNewProject"
+          >
+            Создать проект
+          </button>
+        </div>
       </div>
 
       <!-- Лоадер -->
-      <div v-else class="flex justify-center items-center h-64">
-        <span class="loading loading-spinner loading-lg"></span>
+      <div v-else class="flex justify-center items-center h-64 fade-in">
+        <span class="loading loading-spinner loading-lg text-yellow-400"></span>
       </div>
     </main>
   </div>
@@ -63,14 +115,52 @@ const projects = ref([])
 const loading = ref(true)
 const error = ref(null)
 
+// Параллакс
+const mousePosition = reactive({ x: 0, y: 0 })
+const mouseIntensity = ref(0)
+const cloud1 = reactive({ x: 0, y: 0 })
+const cloud2 = reactive({ x: 0, y: 0 })
+
+const initClouds = () => {
+  cloud1.x = window.innerWidth / 2 - 160
+  cloud1.y = window.innerHeight / 3
+  cloud2.x = window.innerWidth / 1.5 - 144
+  cloud2.y = window.innerHeight / 1.4
+}
+
 onMounted(async () => {
+  initClouds()
+  window.addEventListener('resize', initClouds)
   await loadProjects()
 })
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', initClouds)
+})
+
+const handleMouseMove = (e) => {
+  mousePosition.x = e.clientX
+  mousePosition.y = e.clientY
+  mouseIntensity.value = Math.min(1, Math.sqrt(
+    Math.pow(e.clientX - window.innerWidth / 2, 2) +
+    Math.pow(e.clientY - window.innerHeight / 2, 2)
+  ) / Math.max(window.innerWidth, window.innerHeight) * 2)
+
+  const speed1 = 0.02
+  const speed2 = 0.015
+  cloud1.x = window.innerWidth / 2 - 160 + (window.innerWidth / 2 - e.clientX) * speed1
+  cloud1.y = window.innerHeight / 3 + (window.innerHeight / 2 - e.clientY) * speed1
+  cloud2.x = window.innerWidth / 1.5 - 144 + (window.innerWidth / 2 - e.clientX) * speed2
+  cloud2.y = window.innerHeight / 1.4 + (window.innerHeight / 2 - e.clientY) * speed2
+}
+
+const handleMouseLeave = () => {
+  mouseIntensity.value = 0
+}
 
 const loadProjects = async () => {
   loading.value = true
   error.value = null
-  
   try {
     projects.value = await getUserProjects()
   } catch (err) {
@@ -85,24 +175,47 @@ const createNewProject = () => {
   router.push('/project/new')
 }
 
-const openProject = (id) => {
-  router.push(`/project/${id}`)
-}
-
 const deleteProject = async (id) => {
   const confirmed = await confirm(
     'Удалить проект?',
-    'Это действие нельзя отменить. Все сцены и данные проекта будут удалены.'
+    'Все сцены и данные будут безвозвратно удалены.'
   )
-
   if (!confirmed) return
-
   try {
     await apiDeleteProject(id)
     showSuccess('Проект удалён')
     await loadProjects()
   } catch (err) {
-    showError('Не удалось удалить проект: ' + err.message)
+    showError('Ошибка удаления: ' + err.message)
   }
 }
 </script>
+
+<style scoped>
+/* Анимации появления */
+.fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+  opacity: 0;
+}
+.fade-in-up {
+  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.project-item {
+  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes fade-in {
+  to { opacity: 1; }
+}
+@keyframes fade-in-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

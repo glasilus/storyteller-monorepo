@@ -1,15 +1,9 @@
+<!-- layouts/default.vue -->
 <template>
-  <div class="min-h-screen bg-base-100">
-    <!-- Глобальное уведомление -->
+  <div class="min-h-screen">
     <Notification />
-
-    <!-- Модальное окно подтверждения -->
     <CommonConfirmDialog />
-
-    <!-- ЕДИНСТВЕННЫЙ AppHeader на всех страницах -->
     <AppHeader />
-
-    <!-- Контент страниц -->
     <main class="pb-8">
       <slot />
     </main>

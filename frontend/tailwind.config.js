@@ -8,12 +8,20 @@ module.exports = {
     "./nuxt.config.{js,ts}"
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        
+        'vg-bg': {
+          DEFAULT: '#121224',        // основной фон
+          softer: '#16162a',        // чуть светлее
+          card: '#1a1a30',          // для карточек
+        }
+      }
+    },
   },
   plugins: [require("daisyui")],
   daisyui: {
-    themes: ["light", "dark", "cupcake"],
-    darkTheme: "dark",
+    themes: false, 
     base: true,
     styled: true,
     utils: true,
