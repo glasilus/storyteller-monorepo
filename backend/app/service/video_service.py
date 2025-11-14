@@ -8,6 +8,7 @@ import uuid
 import requests
 import subprocess
 import gc
+import json
 from typing import List, Dict
 from PIL import Image
 from app.db.supa_request import supabase
@@ -47,13 +48,52 @@ def download_from_supabase_or_url(url: str, file_name_hint: str = None) -> bytes
 
 # Пути к фоновым видео (абсолютные пути от корня проекта)
 import os as _os
-_BASE_DIR = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+# __file__ это G:\site\backend\app\service\video_service.py
+# dirname 1 раз: G:\site\backend\app\service
+# dirname 2 раза: G:\site\backend\app
+# dirname 3 раза: G:\site\backend
+_BACKEND_DIR = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 BACKGROUND_VIDEOS = {
-    "minecraft": _os.path.join(_BASE_DIR, "backend", "assets", "backgrounds", "minecraft.mp4"),
-    "subway": _os.path.join(_BASE_DIR, "backend", "assets", "backgrounds", "subway.mp4"),
-    "abstract": _os.path.join(_BASE_DIR, "backend", "assets", "backgrounds", "abstract.mp4"),
+    "minecraft": _os.path.join(_BACKEND_DIR, "assets", "backgrounds", "minecraft.mp4"),
+    "subway": _os.path.join(_BACKEND_DIR, "assets", "backgrounds", "subway.mp4"),
+    "abstract": _os.path.join(_BACKEND_DIR, "assets", "backgrounds", "abstract.mp4"),
 }
+
+
+def get_audio_duration(audio_path: str) -> float:
+    """
+    Получает длительность аудио файла через ffprobe
+
+    Args:
+        audio_path: Путь к аудио файлу
+
+    Returns:
+        float: Длительность в секундах
+    """
+    try:
+        cmd = [
+            "ffprobe",
+            "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "json",
+            audio_path
+        ]
+
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            duration = float(data["format"]["duration"])
+            print(f"[AUDIO_DURATION] Detected audio duration: {duration}s")
+            return duration
+        else:
+            print(f"[AUDIO_DURATION] ffprobe failed, using default 30s")
+            return 30.0
+
+    except Exception as e:
+        print(f"[AUDIO_DURATION] Error getting duration: {str(e)}, using default 30s")
+        return 30.0
 
 
 async def create_slideshow_video(
@@ -91,9 +131,10 @@ async def create_slideshow_video(
         if not valid_scenes:
             raise ValueError("No scenes with generated images found")
 
-        # Рассчитываем длительность для каждого изображения
+        # ПРИМЕЧАНИЕ: Длительность будет пересчитана после загрузки аудио
+        # Это временное значение для логирования
         duration_per_scene = total_duration / len(valid_scenes)
-        print(f"[VIDEO_SERVICE] Duration per scene: {duration_per_scene}s")
+        print(f"[VIDEO_SERVICE] Initial duration per scene: {duration_per_scene}s")
 
         # ОПТИМИЗАЦИЯ: Уменьшаем разрешение до 720x1280 (вместо 1080x1920)
         video_width = 720
@@ -163,6 +204,8 @@ async def create_slideshow_video(
 
         # Скачиваем аудио, если есть
         audio_path = None
+        actual_duration = total_duration  # По умолчанию используем переданную длительность
+
         if voiceover_url:
             print(f"[VIDEO_SERVICE] Downloading voiceover...")
             try:
@@ -174,6 +217,20 @@ async def create_slideshow_video(
                 temp_files.append(audio_path)
                 print(f"[VIDEO_SERVICE] Voiceover downloaded: {len(audio_content)} bytes")
 
+                # ВАЖНО: Получаем реальную длительность аудио
+                actual_duration = get_audio_duration(audio_path)
+                print(f"[VIDEO_SERVICE] Using audio duration: {actual_duration}s (was {total_duration}s)")
+
+                # ПЕРЕСЧИТЫВАЕМ длительность для каждой сцены
+                if actual_duration != total_duration:
+                    new_duration_per_scene = actual_duration / len(valid_scenes)
+                    print(f"[VIDEO_SERVICE] Recalculating scene durations: {new_duration_per_scene}s per scene")
+
+                    for i, img_info in enumerate(processed_images):
+                        img_info["start_time"] = i * new_duration_per_scene
+                        img_info["duration"] = new_duration_per_scene
+                        print(f"[VIDEO_SERVICE] Scene {i+1}: start={img_info['start_time']:.2f}s, duration={img_info['duration']:.2f}s")
+
                 # Освобождаем память
                 del audio_content
                 gc.collect()
@@ -181,12 +238,24 @@ async def create_slideshow_video(
                 print(f"[VIDEO_SERVICE] Warning: Could not download voiceover: {str(e)}")
                 audio_path = None
 
+        # Сохраняем субтитры во временный файл если есть
+        subtitle_path = None
+        if subtitle_content:
+            print(f"[VIDEO_SERVICE] Saving subtitles to temp file...")
+            subtitle_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".srt", mode='w', encoding='utf-8')
+            subtitle_temp.write(subtitle_content)
+            subtitle_temp.close()
+            subtitle_path = subtitle_temp.name
+            temp_files.append(subtitle_path)
+            print(f"[VIDEO_SERVICE] Subtitles saved to: {subtitle_path}")
+
         # КЛЮЧЕВАЯ ОПТИМИЗАЦИЯ: Используем ffmpeg напрямую
         output_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
         output_temp.close()
         temp_files.append(output_temp.name)
 
         print(f"[VIDEO_SERVICE] Building video with ffmpeg...")
+        print(f"[VIDEO_SERVICE] Final video duration: {actual_duration}s")
         success = build_video_with_ffmpeg(
             background_path=background_path,
             images=processed_images,
@@ -194,7 +263,8 @@ async def create_slideshow_video(
             output_path=output_temp.name,
             video_width=video_width,
             video_height=video_height,
-            total_duration=total_duration
+            total_duration=actual_duration,  # Используем реальную длительность!
+            subtitle_path=subtitle_path
         )
 
         if not success:
@@ -264,11 +334,12 @@ def build_video_with_ffmpeg(
     output_path: str,
     video_width: int,
     video_height: int,
-    total_duration: float
+    total_duration: float,
+    subtitle_path: str = None
 ) -> bool:
     """
     Собирает видео используя ffmpeg напрямую (экономит память)
-    С медленным zoom эффектом и центрированием изображений
+    С медленным zoom эффектом, центрированием изображений и субтитрами
 
     Args:
         background_path: Путь к фоновому видео
@@ -278,6 +349,7 @@ def build_video_with_ffmpeg(
         video_width: Ширина финального видео
         video_height: Высота финального видео
         total_duration: Общая длительность
+        subtitle_path: Путь к файлу субтитров .srt (может быть None)
 
     Returns:
         bool: True если успешно, False иначе
@@ -308,9 +380,14 @@ def build_video_with_ffmpeg(
             end_time = start_time + img_info["duration"]
             duration = img_info["duration"]
 
-            # Ken Burns эффект (медленный zoom): от 1.0 до 1.1 масштаба
-            # zoompan: z='min(zoom+0.001,1.1)':d=1:s=WIDTHxHEIGHT
-            zoom_filter = f"[{img_input_idx}:v]scale={img_info['width']}:{img_info['height']},zoompan=z='if(lte(zoom,1.0),1.0,max(1.0,1.1-on*0.002))':d={int(duration*24)}:s={img_info['width']}x{img_info['height']}:fps=24[img{i}]"
+            # Ken Burns эффект (медленный zoom): от 1.0 до 1.15 масштаба
+            # zoompan параметры:
+            # z - масштаб: 1.0 + (on/продолжительность) * 0.15 = плавный zoom от 1.0 до 1.15
+            # d - длительность в кадрах
+            # s - размер выходного кадра
+            # fps - кадровая частота
+            total_frames = int(duration * 24)
+            zoom_filter = f"[{img_input_idx}:v]scale={img_info['width']}:{img_info['height']},zoompan=z='min(1.0+on/{total_frames}*0.15,1.15)':d={total_frames}:s={img_info['width']}x{img_info['height']}:fps=24[img{i}]"
             filter_parts.append(zoom_filter)
 
             if i < len(images) - 1:
@@ -321,10 +398,25 @@ def build_video_with_ffmpeg(
                 )
                 current_base = output_label
             else:
-                # Последний overlay - выходной
-                filter_parts.append(
-                    f"[{current_base}][img{i}]overlay={x_pos}:{y_pos}:enable='between(t,{start_time},{end_time})'[outv]"
-                )
+                # Последний overlay
+                if subtitle_path:
+                    # Если есть субтитры - создаем промежуточный label
+                    filter_parts.append(
+                        f"[{current_base}][img{i}]overlay={x_pos}:{y_pos}:enable='between(t,{start_time},{end_time})'[video_nosubs]"
+                    )
+                else:
+                    # Если нет субтитров - это конечный label
+                    filter_parts.append(
+                        f"[{current_base}][img{i}]overlay={x_pos}:{y_pos}:enable='between(t,{start_time},{end_time})'[outv]"
+                    )
+
+        # Добавляем субтитры если есть
+        if subtitle_path:
+            # Экранируем путь для ffmpeg (заменяем \ на / и экранируем :)
+            escaped_subtitle_path = subtitle_path.replace('\\', '/').replace(':', '\\\\:')
+            # Добавляем subtitles фильтр с настройками
+            subtitle_filter = f"[video_nosubs]subtitles='{escaped_subtitle_path}':force_style='FontSize=18,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BackColour=&H80000000&,Bold=1,Outline=2,Shadow=1,MarginV=50'[outv]"
+            filter_parts.append(subtitle_filter)
 
         filter_complex = ";".join(filter_parts)
         print(f"[FFMPEG] Filter complex length: {len(filter_complex)} chars")
