@@ -74,13 +74,13 @@
           <div class="grid md:grid-cols-3 gap-4 mt-6">
             <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl p-4 border border-slate-700/40">
               <div class="flex items-center gap-2.5 mb-3">
-                <!-- Иконка: золотая кисть -->
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fde047" stroke-width="1.6">
-                  <path d="M12 3v6m0 0l4-4m-4 4l-4-4" />
-                  <circle cx="12" cy="15" r="8" />
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M8 15h8" />
+                  <path d="M9 9h1M14 9h1" />
+                  <path d="M9.5 8.5a1 1 0 1 1-2 0 1 1 0 1 1 2 0z" />
+                  <path d="M16.5 8.5a1 1 0 1 1-2 0 1 1 0 1 1 2 0z" />
                 </svg>
-                <label class="text-sm font-bold text-slate-200">Тон сценария</label>
-              </div>
               <input
                 v-model="project.settings.tone"
                 type="text"
@@ -94,15 +94,14 @@
 
             <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl p-4 border border-slate-700/40">
               <div class="flex items-center gap-2.5 mb-3">
-                <!-- Иконка: лавандовая палитра -->
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c4b5fd" stroke-width="1.6">
-                  <circle cx="6" cy="10" r="2" />
-                  <circle cx="18" cy="10" r="2" />
-                  <circle cx="12" cy="6" r="2" />
-                  <circle cx="6" cy="18" r="2" />
-                  <circle cx="18" cy="18" r="2" />
-                  <circle cx="12" cy="18" r="2" />
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <circle cx="15.5" cy="8.5" r="1.5" />
+                  <circle cx="8.5" cy="15.5" r="1.5" />
+                  <circle cx="15.5" cy="15.5" r="1.5" />
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="12" y1="3" x2="12" y2="21" />
                 </svg>
                 <label class="text-sm font-bold text-slate-200">Визуальный стиль</label>
               </div>
@@ -139,9 +138,10 @@
           </div>
 
         </div>
+      </div>
       
       
-      
+
       <!-- Генерация сценария -->
       <div 
         v-if="!project.scenes || project.scenes.length === 0" 
