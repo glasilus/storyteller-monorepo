@@ -151,6 +151,26 @@ def update_project_time(project_id: str, project_time: float):
     return res.data
 
 
+## Get random fallback image
+def get_random_fallback_image():
+    """Получает случайное фоллбэк изображение из базы данных"""
+    import random
+
+    try:
+        res = supabase.table("fallback_images").select("*").eq("is_active", True).execute()
+
+        if res.data and len(res.data) > 0:
+            random_image = random.choice(res.data)
+            print(f"[FALLBACK] Selected random image: {random_image.get('description', 'No description')}")
+            return random_image.get("image_url")
+        else:
+            print(f"[FALLBACK] No fallback images found in database")
+            return None
+    except Exception as e:
+        print(f"[FALLBACK] Error getting fallback image: {str(e)}")
+        return None
+
+
 ## Update final video URL for project
 def update_final_video_url(project_id: str, final_video_url: str):
     """Обновляет URL финального видео для проекта"""

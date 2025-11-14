@@ -199,12 +199,21 @@ async def generate_image(visual_promt: str, max_retries: int = 3):
 
 async def generate_placeholder_image(visual_promt: str):
     """
-    Генерирует placeholder изображение с текстом промпта
+    Возвращает случайное фоллбэк-изображение из базы данных.
+    Если в базе нет изображений - возвращает placehold.co
     """
-    # Берем первые слова промпта для текста
-    short_text = visual_promt[:50].replace(' ', '+')
+    from app.db.supa_request import get_random_fallback_image
 
-    # Используем placeholder сервис
+    # Пробуем получить случайное изображение из базы
+    fallback_url = get_random_fallback_image()
+
+    if fallback_url:
+        print(f"[IMAGE_GEN] Using fallback image from database: {fallback_url[:60]}...")
+        return fallback_url
+
+    # Если в базе нет изображений - используем старый placeholder
+    print(f"[IMAGE_GEN] ⚠️ No fallback images in database, using placehold.co")
+    short_text = visual_promt[:50].replace(' ', '+')
     placeholder_url = f"https://placehold.co/768x1024/2d2d2d/white?text={short_text}"
 
     print(f"[IMAGE_GEN] Placeholder URL: {placeholder_url}")
