@@ -354,7 +354,6 @@ const handle404Click = () => {
   font-family: 'Courier New', monospace;
   font-size: 0.75rem;
   letter-spacing: -0.5px;
-  opacity: v-bind('fragment.opacity');
   pointer-events: none;
   transition: transform 0.1s ease-out, opacity 0.5s ease;
   max-width: 150px;
