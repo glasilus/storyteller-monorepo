@@ -22,12 +22,18 @@ IMAGE_APIS = [
     {
         "name": "Pollinations (Turbo)",
         "url_template": "https://image.pollinations.ai/prompt/{prompt}?width=768&height=1024&nologo=true&model=turbo",
-        "timeout": 10
+        "timeout": 45  # Увеличен с 10 до 45 секунд
     },
     {
-        "name": "Segmind API",
-        "url_template": "https://api.segmind.com/v1/sd1.5-txt2img",
-        "timeout": 15
+        "name": "Pollinations (Flux)",
+        "url_template": "https://image.pollinations.ai/prompt/{prompt}?width=768&height=1024&nologo=true&model=flux",
+        "timeout": 60  # Flux модель медленнее но качественнее
+    },
+    {
+        "name": "Replicate Stable Diffusion",
+        "url_template": "https://api.replicate.com/v1/predictions",
+        "type": "replicate",
+        "timeout": 45
     }
 ]
 
@@ -86,6 +92,10 @@ async def generate_with_huggingface(prompt: str, timeout: int = 30):
             print(f"[HF] Model is loading, estimated time: 20s")
             await asyncio.sleep(20)
             return None  # Вернет None для retry
+        elif response.status_code == 429:
+            # Rate limit / токены закончились
+            print(f"[HF] Rate limit exceeded (токены закончились), пропускаем HF API")
+            return "SKIP"  # Специальный код для пропуска этого API
         else:
             print(f"[HF] Error {response.status_code}: {response.text[:200]}")
             return None
@@ -95,7 +105,7 @@ async def generate_with_huggingface(prompt: str, timeout: int = 30):
         return None
 
 
-async def generate_image(visual_promt: str, max_retries: int = 2):
+async def generate_image(visual_promt: str, max_retries: int = 3):
     """
     Генерирует изображение, пробуя несколько API в порядке приоритета
 
@@ -125,7 +135,10 @@ async def generate_image(visual_promt: str, max_retries: int = 2):
                 # Hugging Face API (загружает в Storage)
                 if api_config.get("type") == "huggingface":
                     result = await generate_with_huggingface(visual_promt, api_config["timeout"])
-                    if result:
+                    if result == "SKIP":
+                        print(f"[IMAGE_GEN] Skipping {api_name} (rate limit)")
+                        break  # Пропускаем этот API полностью
+                    elif result:
                         print(f"[IMAGE_GEN] ✓ Success with {api_name}!")
                         return result
                     else:

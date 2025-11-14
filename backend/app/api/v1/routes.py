@@ -308,13 +308,30 @@ async def regenerate_images(project_id: str, user_id: str = Depends(get_current_
 @router.delete("/scenes/{scene_id}")
 async def delete_scene_endpoint(scene_id: str, user_id: str = Depends(get_current_user)):
     """
-    Delete a scene by ID
+    Delete a scene by ID and renumber remaining scenes
     """
     try:
-        res = supabase.table("scenes").delete().eq("id", scene_id).execute()
+        # Получаем сцену которую удаляем
+        scene_to_delete = supabase.table("scenes").select("*").eq("id", scene_id).execute()
 
-        if not res.data:
-            raise HTTPException(status_code=404, detail="Scene not found or already deleted")
+        if not scene_to_delete.data:
+            raise HTTPException(status_code=404, detail="Scene not found")
+
+        deleted_scene_number = scene_to_delete.data[0]["scene_number"]
+        project_id = scene_to_delete.data[0]["project_id"]
+
+        # Удаляем сцену
+        supabase.table("scenes").delete().eq("id", scene_id).execute()
+
+        # ВАЖНО: Перенумеровываем все сцены с номером больше удалённой
+        remaining_scenes = supabase.table("scenes").select("*").eq("project_id", project_id).gt("scene_number", deleted_scene_number).execute()
+
+        for scene in remaining_scenes.data:
+            new_number = scene["scene_number"] - 1
+            supabase.table("scenes").update({"scene_number": new_number}).eq("id", scene["id"]).execute()
+            print(f"[DELETE_SCENE] Renumbered scene {scene['id']}: {scene['scene_number']} -> {new_number}")
+
+        print(f"[DELETE_SCENE] Deleted scene {scene_id} and renumbered {len(remaining_scenes.data)} scenes")
 
         return {"success": True, "message": "Scene deleted successfully", "scene_id": scene_id}
 

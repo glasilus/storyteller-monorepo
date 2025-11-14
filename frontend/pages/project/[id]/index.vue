@@ -341,23 +341,54 @@ const handleGenerateScript = async () => {
 
 const generateAllImages = async () => {
   if (!project.value.scenes || project.value.scenes.length === 0) return
-  
+
   generatingImages.value = true
-  
+
   try {
-    const result = await apiGenerateImages(project.value.id)
-    
-    result.scenes.forEach(sceneData => {
-      const scene = project.value.scenes.find(s => s.id === sceneData.scene_id)
-      if (scene) {
-        scene.generated_image_url = sceneData.generated_image_url
+    // Запускаем генерацию
+    await apiGenerateImages(project.value.id)
+
+    // Запускаем polling для обновления картинок по мере генерации
+    const pollInterval = setInterval(async () => {
+      try {
+        // Перезагружаем проект чтобы получить обновлённые URL картинок
+        const updatedProject = await api.getProject(project.value.id)
+
+        // Обновляем URL картинок
+        let allGenerated = true
+        updatedProject.scenes.forEach((updatedScene, index) => {
+          if (project.value.scenes[index]) {
+            project.value.scenes[index].generated_image_url = updatedScene.generated_image_url
+
+            // Проверяем, сгенерированы ли все картинки
+            if (!updatedScene.generated_image_url || updatedScene.generated_image_url.includes('placehold.co')) {
+              allGenerated = false
+            }
+          }
+        })
+
+        // Если все картинки сгенерированы - останавливаем polling
+        if (allGenerated) {
+          clearInterval(pollInterval)
+          generatingImages.value = false
+          showSuccess('Все картинки сгенерированы!')
+        }
+      } catch (err) {
+        console.error('[pollImages] Error:', err)
       }
-    })
-    
-    showSuccess('Все картинки сгенерированы!')
+    }, 3000) // Проверяем каждые 3 секунды
+
+    // Автоматически останавливаем через 5 минут (если что-то пошло не так)
+    setTimeout(() => {
+      clearInterval(pollInterval)
+      if (generatingImages.value) {
+        generatingImages.value = false
+        showError('Таймаут генерации. Обновите страницу.')
+      }
+    }, 300000) // 5 минут
+
   } catch (error) {
     showError('Ошибка генерации картинок: ' + error.message)
-  } finally {
     generatingImages.value = false
   }
 }
