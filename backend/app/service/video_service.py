@@ -265,10 +265,11 @@ def build_video_with_ffmpeg(
 ) -> bool:
     """
     Собирает видео используя ffmpeg напрямую (экономит память)
+    С медленным zoom эффектом и центрированием изображений
 
     Args:
         background_path: Путь к фоновому видео
-        images: Список словарей с информацией об изображениях
+        images: Список словарей с информацией об изображениями
         audio_path: Путь к аудио файлу (может быть None)
         output_path: Путь для сохранения результата
         video_width: Ширина финального видео
@@ -285,35 +286,46 @@ def build_video_with_ffmpeg(
         filter_parts = []
 
         # Базовый фон - зацикливаем и обрезаем до нужной длительности
-        filter_parts.append(f"[0:v]loop=loop=-1:size=1:start=0,trim=duration={total_duration},setpts=PTS-STARTPTS,scale={video_width}:{video_height}[bg]")
+        filter_parts.append(f"[0:v]loop=loop=-1:size=1:start=0,trim=duration={total_duration},setpts=PTS-STARTPTS,scale={video_width}:{video_height}:force_original_aspect_ratio=decrease,pad={video_width}:{video_height}:(ow-iw)/2:(oh-ih)/2[bg]")
 
-        # Добавляем каждое изображение как overlay
+        # Добавляем каждое изображение с zoom эффектом
         current_base = "bg"
         for i, img_info in enumerate(images):
             img_input_idx = i + 1  # Индексы входов: 0 - фон, 1+ - изображения
 
+            # Позиция Y (центрируем вертикально - в середине экрана)
+            # Оставляем место снизу для фона (40% высоты для изображения)
+            y_pos = int(video_height * 0.15)  # Начинаем с 15% от верха
+
             # Позиция X (центрируем по горизонтали)
             x_pos = (video_width - img_info["width"]) // 2
 
-            # Создаем overlay с временными рамками
+            # Создаем overlay с временными рамками и ZOOM эффектом
             start_time = img_info["start_time"]
             end_time = start_time + img_info["duration"]
+            duration = img_info["duration"]
+
+            # Ken Burns эффект (медленный zoom): от 1.0 до 1.1 масштаба
+            # zoompan: z='min(zoom+0.001,1.1)':d=1:s=WIDTHxHEIGHT
+            zoom_filter = f"[{img_input_idx}:v]scale={img_info['width']}:{img_info['height']},zoompan=z='if(lte(zoom,1.0),1.0,max(1.0,1.1-on*0.002))':d={int(duration*24)}:s={img_info['width']}x{img_info['height']}:fps=24[img{i}]"
+            filter_parts.append(zoom_filter)
 
             if i < len(images) - 1:
                 # Промежуточный результат
                 output_label = f"tmp{i}"
                 filter_parts.append(
-                    f"[{current_base}][{img_input_idx}:v]overlay={x_pos}:50:enable='between(t,{start_time},{end_time})'[{output_label}]"
+                    f"[{current_base}][img{i}]overlay={x_pos}:{y_pos}:enable='between(t,{start_time},{end_time})'[{output_label}]"
                 )
                 current_base = output_label
             else:
                 # Последний overlay - выходной
                 filter_parts.append(
-                    f"[{current_base}][{img_input_idx}:v]overlay={x_pos}:50:enable='between(t,{start_time},{end_time})'[outv]"
+                    f"[{current_base}][img{i}]overlay={x_pos}:{y_pos}:enable='between(t,{start_time},{end_time})'[outv]"
                 )
 
         filter_complex = ";".join(filter_parts)
-        print(f"[FFMPEG] Filter complex: {filter_complex[:200]}...")  # Показываем первые 200 символов
+        print(f"[FFMPEG] Filter complex length: {len(filter_complex)} chars")
+        print(f"[FFMPEG] Filter preview: {filter_complex[:300]}...")  # Показываем первые 300 символов
 
         # Строим команду ffmpeg
         cmd = ["ffmpeg", "-y"]  # -y для перезаписи
