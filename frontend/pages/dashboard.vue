@@ -8,8 +8,8 @@
 
     <!-- Текстура мазков -->
     <div 
-      class="absolute inset-0 opacity-7 z-0"
-      style="background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M20,60 Q40,40 60,60 T100,60 Q120,40 140,60' stroke='rgba(253,224,71,0.1)' stroke-width='1' fill='none'/%3E%3Cpath d='M10,100 Q30,80 50,100 T90,100 Q110,80 130,100' stroke='rgba(139,92,246,0.07)' stroke-width='0.8' fill='none'/%3E%3Cpath d='M30,140 Q50,120 70,140 T110,140' stroke='rgba(56,189,248,0.06)' stroke-width='0.6' fill='none'/%3E%3C/svg%3E&quot;); background-size: 400px 400px;"
+      class="absolute inset-0 opacity-100 z-0" 
+      :style="{ backgroundImage: `url('${brushTexture}')`, backgroundSize: '300px 300px', backgroundRepeat: 'repeat' }"
     ></div>
 
     <!-- Параллакс-облака (очень прозрачные) -->
@@ -102,6 +102,7 @@
 </template>
 
 <script setup>
+const brushTexture = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cg fill='none'%3E%3Cpath d='M40,80 Q70,40 120,70 Q160,90 190,60' stroke='rgba(253,224,71,0.08)' stroke-width='2' opacity='0.6'/%3E%3Cpath d='M20,150 Q60,120 100,160 Q140,180 180,140' stroke='rgba(139,92,246,0.06)' stroke-width='1.5' opacity='0.5'/%3E%3Cpath d='M60,220 Q100,200 140,230 Q170,250 220,220' stroke='rgba(56,189,248,0.05)' stroke-width='1' opacity='0.4'/%3E%3Cpath d='M250,100 Q220,130 260,170 Q280,200 250,230' stroke='rgba(253,224,71,0.04)' stroke-width='1.2' opacity='0.3'/%3E%3C/g%3E%3C/svg%3E`
 const { getUserProjects, deleteProject: apiDeleteProject } = useApi()
 const { showError, showSuccess } = useNotification()
 const { confirm } = useConfirm()
