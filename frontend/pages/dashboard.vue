@@ -9,7 +9,7 @@
     <!-- Текстура мазков -->
     <div 
       class="absolute inset-0 opacity-7 z-0"
-      style="background-image: url('image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Cpath d=%22M20,60 Q40,40 60,60 T100,60 Q120,40 140,60%22 stroke=%22rgba(253,224,71,0.1)%22 stroke-width=%221%22 fill=%22none%22/%3E%3Cpath d=%22M10,100 Q30,80 50,100 T90,100 Q110,80 130,100%22 stroke=%22rgba(139,92,246,0.07)%22 stroke-width=%220.8%22 fill=%22none%22/%3E%3Cpath d=%22M30,140 Q50,120 70,140 T110,140%22 stroke=%22rgba(56,189,248,0.06)%22 stroke-width=%220.6%22 fill=%22none%22/%3E%3C/svg%3E'); background-size: 400px 400px;"
+      style="background-image: url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cpath d='M20,60 Q40,40 60,60 T100,60 Q120,40 140,60' stroke='rgba(253,224,71,0.1)' stroke-width='1' fill='none'/%3E%3Cpath d='M10,100 Q30,80 50,100 T90,100 Q110,80 130,100' stroke='rgba(139,92,246,0.07)' stroke-width='0.8' fill='none'/%3E%3Cpath d='M30,140 Q50,120 70,140 T110,140' stroke='rgba(56,189,248,0.06)' stroke-width='0.6' fill='none'/%3E%3C/svg%3E&quot;); background-size: 400px 400px;"
     ></div>
 
     <!-- Параллакс-облака (очень прозрачные) -->
