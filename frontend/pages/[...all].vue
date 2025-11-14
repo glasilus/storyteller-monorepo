@@ -166,11 +166,32 @@
     }
   
     // Анимация фрагментов
-    scriptFragments.value.forEach((frag, i) => {
-      frag.x = Math.random() * 100
-      frag.y = Math.random() * 100
-      frag.speed = 0.01 + Math.random() * 0.02
-    })
+    const scriptFragments = ref([
+      { text: 'Интересные факты про электроовец', x: 12, y: 18, opacity: 0.7 },
+      { text: 'Этот мужчина...', x: 85, y: 22, opacity: 0.6 },
+      { text: 'Знаете ли вы, что...', x: 18, y: 78, opacity: 0.8 },
+      { text: 'Я мопс, мне...?', x: 82, y: 75, opacity: 0.5 },
+      { text: 'Он выжил... но не ожидал этого', x: 10, y: 32, opacity: 0.75 },
+      { text: 'Никто не верил, пока...', x: 88, y: 38, opacity: 0.65 },
+      { text: 'Это изменило всё за 3 секунды', x: 15, y: 58, opacity: 0.8 },
+      { text: 'Она сказала "да"... но не ему', x: 85, y: 48, opacity: 0.6 },
+      { text: 'Через час его не стало...', x: 12, y: 82, opacity: 0.7 },
+      { text: 'А потом раздался крик', x: 80, y: 28, opacity: 0.85 },
+      { text: 'Он не знал, что это — ловушка', x: 10, y: 62, opacity: 0.7 },
+      { text: 'Её секрет шокировал всех', x: 90, y: 68, opacity: 0.6 },
+      { text: 'Это было не то, чем казалось', x: 85, y: 18, opacity: 0.75 },
+      { text: 'Он проснулся... в другом теле', x: 12, y: 88, opacity: 0.6 },
+      { text: 'Они думали, что всё кончено...', x: 88, y: 32, opacity: 0.7 },
+      { text: 'А ведь началось всё с мелочи', x: 15, y: 42, opacity: 0.8 },
+      { text: 'Никто не заметил подвоха', x: 82, y: 22, opacity: 0.65 },
+      { text: 'Она исчезла без следа', x: 10, y: 72, opacity: 0.7 },
+      { text: 'Это видео запрещено в 12 странах', x: 88, y: 78, opacity: 0.6 },
+      { text: 'А вы бы так смогли?', x: 15, y: 68, opacity: 0.8 },
+      { text: 'Секунда — и жизнь изменилась', x: 85, y: 12, opacity: 0.75 },
+      { text: 'Он не подозревал, что за ним следят', x: 88, y: 52, opacity: 0.6 },
+      { text: 'Это не мем... это правда', x: 12, y: 38, opacity: 0.8 },
+      { text: 'Она вернулась... спустя 10 лет', x: 85, y: 82, opacity: 0.7 }
+    ])
   })
   
   const handleMouseMove = (e) => {
@@ -254,6 +275,9 @@
     opacity: 0.7;
     pointer-events: none;
     transition: transform 0.1s ease-out;
+    max-width: 180px;
+    word-wrap: break-word;
+    text-align: center;
     text-shadow: 0 0 8px rgba(253, 224, 71, 0.8);
   }
   
