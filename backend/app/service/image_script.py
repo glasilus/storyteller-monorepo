@@ -10,7 +10,7 @@ from app.config import HUGGING_FACE_API_KEY
 import uuid
 
 # Hugging Face API endpoint для генерации изображений
-HF_API_URL = "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell"
+HF_API_URL = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
 
 # Список API для генерации изображений (в порядке приоритета)
 IMAGE_APIS = [
