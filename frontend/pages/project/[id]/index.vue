@@ -137,49 +137,6 @@
             </div>
           </div>
 
-          <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl p-4 border border-slate-700/40">
-            <div class="flex items-center gap-2 mb-3">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-purple-400/80">
-                <path d="M17 3a2 2 0 1 1-4 0" />
-                <path d="M11 3a2 2 0 1 0 4 0" />
-                <path d="M6 20a2 2 0 1 1-4 0" />
-                <path d="M3 10a2 2 0 1 0 4 0" />
-                <path d="M21 20a2 2 0 1 1-4 0" />
-                <path d="M17 10a2 2 0 1 0 4 0" />
-                <path d="M12 13a6 6 0 1 0 0-12 6 6 0 0 0 0 12z" />
-                <path d="M12 13a3 3 0 1 1 0-6 3 3 0 0 1 0 6z" />
-              </svg>
-              <label class="text-sm font-bold text-slate-200">Визуальный стиль</label>
-            </div>
-            <input
-              v-model="project.settings.style"
-              type="text"
-              class="input input-transparent w-full text-slate-200 placeholder-slate-500 focus:outline-none focus:border-yellow-400 focus:border-b border-b border-slate-700/50"
-              placeholder="кинематографичный..."
-              :disabled="hasScenes"
-              :class="{ 'opacity-60 cursor-not-allowed': hasScenes }"
-              @blur="saveProjectMetadata"
-            />
-          </div>
-
-          <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl p-4 border border-slate-700/40">
-            <div class="flex items-center gap-2 mb-3">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-blue-400/80">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12,6 12,12 16,14" />
-              </svg>
-              <label class="text-sm font-bold text-slate-200">Длительность (сек)</label>
-            </div>
-            <input
-              v-model.number="project.settings.duration"
-              type="number"
-              class="input input-transparent w-full text-slate-200 placeholder-slate-500 focus:outline-none focus:border-yellow-400 focus:border-b border-b border-slate-700/50"
-              placeholder="30"
-              :disabled="hasScenes"
-              :class="{ 'opacity-60 cursor-not-allowed': hasScenes }"
-              @blur="saveProjectMetadata"
-            />
-          </div>
         </div>
       </div>
       
