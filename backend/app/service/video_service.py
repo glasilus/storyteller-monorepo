@@ -45,11 +45,14 @@ def download_from_supabase_or_url(url: str, file_name_hint: str = None) -> bytes
         raise Exception(f"Failed to download file from URL: {str(e)}")
 
 
-# Пути к фоновым видео
+# Пути к фоновым видео (абсолютные пути от корня проекта)
+import os as _os
+_BASE_DIR = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+
 BACKGROUND_VIDEOS = {
-    "minecraft": "backend/assets/backgrounds/minecraft.mp4",
-    "subway": "backend/assets/backgrounds/subway.mp4",
-    "abstract": "backend/assets/backgrounds/abstract.mp4",
+    "minecraft": _os.path.join(_BASE_DIR, "backend", "assets", "backgrounds", "minecraft.mp4"),
+    "subway": _os.path.join(_BASE_DIR, "backend", "assets", "backgrounds", "subway.mp4"),
+    "abstract": _os.path.join(_BASE_DIR, "backend", "assets", "backgrounds", "abstract.mp4"),
 }
 
 
@@ -330,21 +333,26 @@ def build_video_with_ffmpeg(
         # Строим команду ffmpeg
         cmd = ["ffmpeg", "-y"]  # -y для перезаписи
 
-        # Входы: фон + все изображения
+        # Входы: фон + все изображения + аудио (ВСЕ ВХОДЫ ДОЛЖНЫ БЫТЬ ДО ФИЛЬТРОВ!)
         cmd.extend(["-i", background_path])
         for img_info in images:
             cmd.extend(["-i", img_info["path"]])
 
-        # Фильтр
+        # Добавляем аудио input если есть (ПЕРЕД filter_complex!)
+        audio_input_index = None
+        if audio_path:
+            audio_input_index = len(images) + 1  # Индекс аудио = фон(0) + изображения(N) + 1
+            cmd.extend(["-i", audio_path])
+
+        # Фильтр (ПОСЛЕ всех входов)
         cmd.extend(["-filter_complex", filter_complex])
 
         # Маппинг видео
         cmd.extend(["-map", "[outv]"])
 
-        # Добавляем аудио если есть
-        if audio_path:
-            cmd.extend(["-i", audio_path])
-            cmd.extend(["-map", f"{len(images) + 1}:a"])  # Индекс аудио входа
+        # Маппинг аудио если есть
+        if audio_input_index is not None:
+            cmd.extend(["-map", f"{audio_input_index}:a"])
             cmd.extend(["-c:a", "aac", "-b:a", "128k"])
 
         # ОПТИМИЗАЦИИ для экономии памяти и CPU:

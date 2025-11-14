@@ -8,20 +8,23 @@ from gtts import gTTS
 from app.db.supa_request import supabase
 
 
-async def generate_voiceover(text: str, lang: str = "ru") -> str:
+async def generate_voiceover(text: str, lang: str = "ru", speed: float = 1.3) -> str:
     """
     Генерирует озвучку из текста с помощью Google TTS
+    После генерации увеличивает скорость с помощью ffmpeg
 
     Args:
         text: Текст для озвучки
         lang: Язык озвучки (по умолчанию 'ru')
+        speed: Множитель скорости (1.0 = нормальная, 1.3 = на 30% быстрее)
 
     Returns:
         str: Публичный URL загруженного аудио файла
     """
     try:
         # Генерируем аудио с помощью gTTS
-        tts = gTTS(text=text, lang=lang, slow=False)
+        # Используем tld='com.au' для более приятного женского голоса
+        tts = gTTS(text=text, lang=lang, slow=False, tld='com.au')
 
         # Создаем временный файл
         temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
@@ -31,11 +34,47 @@ async def generate_voiceover(text: str, lang: str = "ru") -> str:
         # Сохраняем аудио во временный файл
         tts.save(temp_path)
 
+        # Если нужна другая скорость - обрабатываем через ffmpeg
+        final_audio_path = temp_path
+        if speed != 1.0:
+            import subprocess
+
+            # Создаем еще один временный файл для ускоренного аудио
+            speed_temp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            speed_temp_path = speed_temp.name
+            speed_temp.close()
+
+            # Используем atempo фильтр для изменения скорости без изменения тона
+            # atempo может работать только в диапазоне 0.5-2.0
+            atempo_value = min(max(speed, 0.5), 2.0)
+
+            ffmpeg_cmd = [
+                "ffmpeg", "-y",
+                "-i", temp_path,
+                "-filter:a", f"atempo={atempo_value}",
+                "-vn",  # Только аудио
+                speed_temp_path
+            ]
+
+            try:
+                print(f"[AUDIO] Changing speed to {atempo_value}x with ffmpeg...")
+                subprocess.run(ffmpeg_cmd, check=True, capture_output=True, timeout=30)
+                final_audio_path = speed_temp_path
+                # Удаляем оригинальный файл
+                os.unlink(temp_path)
+                print(f"[AUDIO] Speed changed successfully")
+            except Exception as ffmpeg_error:
+                print(f"[AUDIO] FFmpeg speed change failed: {ffmpeg_error}, using original speed")
+                # Если не получилось - используем оригинал
+                if os.path.exists(speed_temp_path):
+                    os.unlink(speed_temp_path)
+                final_audio_path = temp_path
+
         # Генерируем уникальное имя файла
         file_name = f"voiceover_{uuid.uuid4()}.mp3"
 
         # Загружаем в Supabase Storage
-        with open(temp_path, "rb") as f:
+        with open(final_audio_path, "rb") as f:
             file_data = f.read()
 
         # Используем upsert для перезаписи файла если он уже существует
@@ -46,7 +85,8 @@ async def generate_voiceover(text: str, lang: str = "ru") -> str:
         )
 
         # Удаляем временный файл
-        os.unlink(temp_path)
+        if os.path.exists(final_audio_path):
+            os.unlink(final_audio_path)
 
         # Получаем публичный URL
         # Если bucket публичный - используем get_public_url
@@ -63,9 +103,15 @@ async def generate_voiceover(text: str, lang: str = "ru") -> str:
             return signed_url['signedURL']
 
     except Exception as e:
-        # Очищаем временный файл в случае ошибки
-        if 'temp_path' in locals() and os.path.exists(temp_path):
-            os.unlink(temp_path)
+        # Очищаем временные файлы в случае ошибки
+        for path_var in ['temp_path', 'final_audio_path', 'speed_temp_path']:
+            if path_var in locals():
+                path = locals()[path_var]
+                if path and os.path.exists(path):
+                    try:
+                        os.unlink(path)
+                    except:
+                        pass
         raise Exception(f"Failed to generate voiceover: {str(e)}")
 
 
