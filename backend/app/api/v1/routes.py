@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from app.service.gemini_script import generate_script
 from app.service.image_script import generate_image
-from app.service.audio_service import generate_voiceover, generate_subtitles, upload_subtitles
+from app.service.audio_service import generate_voiceover, generate_subtitles, generate_subtitles_from_audio, upload_subtitles
 from app.service.video_service import create_slideshow_video, download_from_supabase_or_url
 from .shemas import ScriptRequest, SceneListResponse, SceneUpdateRequest
 from app.db.supa_request import (
@@ -410,17 +410,26 @@ async def generate_voiceover_endpoint(
             actual_duration = get_audio_duration(audio_temp.name)
             print(f"[VOICEOVER] Audio duration: {actual_duration}s")
 
-            # Удаляем временный файл
-            os.unlink(audio_temp.name)
-
             # Обновляем project_time в базе
             update_project_time(project_id, actual_duration)
+
+            # ИСПОЛЬЗУЕМ WHISPER для точных субтитров (идеальная синхронизация)
+            print(f"[VOICEOVER] Generating subtitles from audio using Whisper...")
+            srt_content = generate_subtitles_from_audio(audio_temp.name)
+
+            # Если Whisper не сработал - используем fallback
+            if not srt_content:
+                print(f"[VOICEOVER] Whisper failed, using fallback subtitle generation")
+                srt_content = generate_subtitles(full_text, actual_duration)
+
+            # Теперь удаляем временный файл
+            os.unlink(audio_temp.name)
+
         except Exception as e:
             print(f"[VOICEOVER] Warning: Could not get audio duration: {str(e)}, using default")
             actual_duration = 30.0
-
-        # Генерируем субтитры с реальной длительностью
-        srt_content = generate_subtitles(full_text, actual_duration)
+            # Fallback - простая генерация субтитров
+            srt_content = generate_subtitles(full_text, actual_duration)
 
         # Загружаем субтитры
         subtitle_url = await upload_subtitles(srt_content, project_id)
