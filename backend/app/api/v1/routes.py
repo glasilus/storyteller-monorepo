@@ -101,9 +101,46 @@ async def get_project_endpoint(project_id: str, user_id: str = Depends(get_curre
 
 
 # ========== ГЕНЕРАЦИЯ ВСЕХ ИЗОБРАЖЕНИЙ ==========
+async def _generate_images_background(project_id: str, scenes: list):
+    """Фоновая задача для генерации изображений"""
+    print(f"\n[BG_GENERATE_IMAGES] Starting background image generation for project: {project_id}")
+    print(f"[BG_GENERATE_IMAGES] Scenes to process: {len(scenes)}")
+
+    for idx, scene in enumerate(scenes):
+        scene_id = scene["id"]
+        promt = scene.get("visual_prompt")
+
+        print(f"\n[BG_GENERATE_IMAGES] === Scene {idx + 1}/{len(scenes)} ===")
+        print(f"[BG_GENERATE_IMAGES] Scene ID: {scene_id}")
+        print(f"[BG_GENERATE_IMAGES] Prompt: {promt[:100]}...")
+
+        try:
+            image_url = await generate_image(promt)
+            print(f"[BG_GENERATE_IMAGES] Generated URL: {image_url}")
+
+            update_scene_image_url(scene_id, image_url)
+            print(f"[BG_GENERATE_IMAGES] ✓ Scene {scene_id} updated in DB")
+
+        except Exception as e:
+            print(f"[BG_GENERATE_IMAGES] ✗ Error for scene {scene_id}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            # Продолжаем со следующей сценой
+
+    print(f"\n[BG_GENERATE_IMAGES] ✓ Background generation completed for project {project_id}")
+
+
 @router.post("/generate-image/{project_id}")
-async def generate_images(project_id: str, user_id: str = Depends(get_current_user)):
-    print(f"\n[GENERATE_IMAGES] Starting image generation for project: {project_id}")
+async def generate_images(
+    project_id: str,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(get_current_user)
+):
+    """
+    Запускает генерацию изображений в фоне и сразу возвращает ответ.
+    Клиент должен использовать polling для получения обновлений.
+    """
+    print(f"\n[GENERATE_IMAGES] Received request for project: {project_id}")
 
     scenes = get_visual_promt_by_project(project_id)
     print(f"[GENERATE_IMAGES] Found {len(scenes) if scenes else 0} scenes")
@@ -111,44 +148,16 @@ async def generate_images(project_id: str, user_id: str = Depends(get_current_us
     if not scenes:
         raise HTTPException(status_code=404, detail="No scenes found for this project")
 
-    result = []
+    # Запускаем генерацию в фоне
+    background_tasks.add_task(_generate_images_background, project_id, scenes)
 
-    for idx, scene in enumerate(scenes):
-        scene_id = scene["id"]
-        promt = scene.get("visual_prompt")
+    print(f"[GENERATE_IMAGES] Background task started, returning immediately")
 
-        print(f"\n[GENERATE_IMAGES] === Scene {idx + 1}/{len(scenes)} ===")
-        print(f"[GENERATE_IMAGES] Scene ID: {scene_id}")
-        print(f"[GENERATE_IMAGES] Prompt: {promt[:100]}...")
-
-        try:
-            image_url = await generate_image(promt)
-            print(f"[GENERATE_IMAGES] Generated URL: {image_url}")
-
-            update_scene_image_url(scene_id, image_url)
-            print(f"[GENERATE_IMAGES] ✓ Scene {scene_id} updated with image URL")
-
-            result.append({
-                "scene_id": scene_id,
-                "promt": promt,
-                "generated_image_url": image_url
-            })
-        except Exception as e:
-            print(f"[GENERATE_IMAGES] ✗ Error for scene {scene_id}: {str(e)}")
-            import traceback
-            traceback.print_exc()
-            # Продолжаем со следующей сценой
-            result.append({
-                "scene_id": scene_id,
-                "promt": promt,
-                "generated_image_url": None,
-                "error": str(e)
-            })
-
-    print(f"\n[GENERATE_IMAGES] Completed! Generated {len(result)} images")
     return {
         "project_id": project_id,
-        "scenes": result
+        "status": "started",
+        "message": f"Image generation started for {len(scenes)} scenes",
+        "total_scenes": len(scenes)
     }
 
 

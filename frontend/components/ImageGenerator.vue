@@ -168,10 +168,15 @@ const imageLoading = ref(false)
 const imageLoaded = ref(false)
 
 // Отслеживаем изменение URL изображения
-watch(() => props.scene.generated_image_url, (newUrl) => {
-  if (newUrl) {
+watch(() => props.scene.generated_image_url, (newUrl, oldUrl) => {
+  // Только если URL изменился (не при первой загрузке страницы)
+  if (newUrl && newUrl !== oldUrl) {
     imageLoading.value = true
     imageLoaded.value = false
+  }
+  // Если URL появился и картинка уже загружена ранее - сбрасываем лоадер
+  if (newUrl && !newUrl.includes('placehold.co') && !props.isGenerating) {
+    imageLoading.value = false
   }
 })
 

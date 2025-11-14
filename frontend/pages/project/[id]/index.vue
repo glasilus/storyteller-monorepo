@@ -344,69 +344,72 @@ const generateAllImages = async () => {
 
   generatingImages.value = true
 
-  try {
-    // Запускаем генерацию
-    await apiGenerateImages(project.value.id)
+  // Используем usePolling для автоматического обновления
+  const { start: startPolling, stop: stopPolling } = usePolling(async () => {
+    try {
+      console.log('[pollImages] Checking for updated images...')
 
-    // Используем usePolling для автоматического обновления
-    const { start: startPolling, stop: stopPolling } = usePolling(async () => {
-      try {
-        console.log('[pollImages] Checking for updated images...')
+      // Перезагружаем проект чтобы получить обновлённые URL картинок
+      const updatedProject = await apiGetProject(project.value.id)
 
-        // Перезагружаем проект чтобы получить обновлённые URL картинок
-        const updatedProject = await apiGetProject(project.value.id)
+      // Обновляем URL картинок
+      let allGenerated = true
+      let generatedCount = 0
 
-        // Обновляем URL картинок
-        let allGenerated = true
-        let generatedCount = 0
+      updatedProject.scenes.forEach((updatedScene, index) => {
+        const currentScene = project.value.scenes.find(s => s.id === updatedScene.id)
 
-        updatedProject.scenes.forEach((updatedScene, index) => {
-          const currentScene = project.value.scenes.find(s => s.id === updatedScene.id)
+        if (currentScene) {
+          // Обновляем URL
+          currentScene.generated_image_url = updatedScene.generated_image_url
 
-          if (currentScene) {
-            // Обновляем URL
-            currentScene.generated_image_url = updatedScene.generated_image_url
-
-            // Проверяем, сгенерирована ли картинка
-            if (updatedScene.generated_image_url && !updatedScene.generated_image_url.includes('placehold.co')) {
-              generatedCount++
-            } else {
-              allGenerated = false
-            }
+          // Проверяем, сгенерирована ли картинка
+          if (updatedScene.generated_image_url && !updatedScene.generated_image_url.includes('placehold.co')) {
+            generatedCount++
+          } else {
+            allGenerated = false
           }
-        })
-
-        console.log(`[pollImages] Generated ${generatedCount}/${project.value.scenes.length} images`)
-
-        // Если все картинки сгенерированы - останавливаем polling
-        if (allGenerated) {
-          console.log('[pollImages] All images generated! Stopping polling.')
-          stopPolling()
-          generatingImages.value = false
-          showSuccess('Все картинки сгенерированы!')
         }
-      } catch (err) {
-        console.error('[pollImages] Error:', err)
+      })
+
+      console.log(`[pollImages] Generated ${generatedCount}/${project.value.scenes.length} images`)
+
+      // Если все картинки сгенерированы - останавливаем polling
+      if (allGenerated) {
+        console.log('[pollImages] All images generated! Stopping polling.')
         stopPolling()
         generatingImages.value = false
-        showError('Ошибка обновления картинок')
+        showSuccess('Все картинки сгенерированы!')
       }
-    }, 3000) // Проверяем каждые 3 секунды
-
-    // Запускаем polling
-    startPolling()
-
-    // Автоматически останавливаем через 5 минут (если что-то пошло не так)
-    setTimeout(() => {
+    } catch (err) {
+      console.error('[pollImages] Error:', err)
       stopPolling()
-      if (generatingImages.value) {
-        generatingImages.value = false
-        showError('Таймаут генерации. Обновите страницу.')
-      }
-    }, 300000) // 5 минут
+      generatingImages.value = false
+      showError('Ошибка обновления картинок')
+    }
+  }, 3000) // Проверяем каждые 3 секунды
 
+  // Запускаем polling СРАЗУ
+  startPolling()
+
+  // Автоматически останавливаем через 10 минут (если что-то пошло не так)
+  setTimeout(() => {
+    stopPolling()
+    if (generatingImages.value) {
+      generatingImages.value = false
+      showError('Таймаут генерации. Обновите страницу.')
+    }
+  }, 600000) // 10 минут (увеличено с 5 минут)
+
+  try {
+    // Запускаем генерацию в фоне (не блокируем UI)
+    console.log('[generateAllImages] Starting background generation...')
+    const response = await apiGenerateImages(project.value.id)
+    console.log('[generateAllImages] Background task started:', response)
   } catch (error) {
-    showError('Ошибка генерации картинок: ' + error.message)
+    console.error('[generateAllImages] Failed to start generation:', error)
+    stopPolling()
+    showError('Ошибка запуска генерации: ' + error.message)
     generatingImages.value = false
   }
 }
