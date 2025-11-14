@@ -81,15 +81,16 @@
                   <path d="M9.5 8.5a1 1 0 1 1-2 0 1 1 0 1 1 2 0z" />
                   <path d="M16.5 8.5a1 1 0 1 1-2 0 1 1 0 1 1 2 0z" />
                 </svg>
-              <input
-                v-model="project.settings.tone"
-                type="text"
-                class="w-full text-slate-200 placeholder-slate-500 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/30 transition-colors"
-                placeholder="юмористический..."
-                :disabled="hasScenes"
-                :class="{ 'opacity-60 cursor-not-allowed': hasScenes }"
-                @blur="saveProjectMetadata"
-              />
+                <input
+                  v-model="project.settings.tone"
+                  type="text"
+                  class="w-full text-slate-200 placeholder-slate-500 bg-slate-800/50 border border-slate-700/50 rounded-lg px-3 py-2 focus:outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/30 transition-colors"
+                  placeholder="юмористический..."
+                  :disabled="hasScenes"
+                  :class="{ 'opacity-60 cursor-not-allowed': hasScenes }"
+                  @blur="saveProjectMetadata"
+                />
+              </div>
             </div>
 
             <div class="bg-slate-800/30 backdrop-blur-sm rounded-xl p-4 border border-slate-700/40">
@@ -138,7 +139,7 @@
           </div>
 
         </div>
-      </div>
+      
       
       
 
