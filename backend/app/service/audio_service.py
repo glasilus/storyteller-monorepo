@@ -6,6 +6,8 @@ import tempfile
 import uuid
 from gtts import gTTS
 from app.db.supa_request import supabase
+import subprocess
+import json
 
 
 async def generate_voiceover(text: str, lang: str = "ru", speed: float = 1.3) -> str:
@@ -115,14 +117,72 @@ async def generate_voiceover(text: str, lang: str = "ru", speed: float = 1.3) ->
         raise Exception(f"Failed to generate voiceover: {str(e)}")
 
 
-def generate_subtitles(text: str, duration: float) -> str:
+def generate_subtitles_from_audio(audio_path: str) -> str:
+    """
+    Генерирует точные субтитры из аудио файла используя Whisper
+    Это даёт идеальную синхронизацию с озвучкой
+
+    Args:
+        audio_path: Путь к аудио файлу
+
+    Returns:
+        str: Содержимое SRT файла
+    """
+    try:
+        print(f"[WHISPER] Generating subtitles from audio: {audio_path}")
+
+        # Используем whisper через командную строку
+        # whisper audio.mp3 --model tiny --language ru --output_format srt --output_dir /tmp
+        output_dir = tempfile.gettempdir()
+
+        cmd = [
+            "whisper",
+            audio_path,
+            "--model", "tiny",  # tiny - быстрая модель, достаточно для русского
+            "--language", "ru",
+            "--output_format", "srt",
+            "--output_dir", output_dir
+        ]
+
+        print(f"[WHISPER] Running command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+
+        if result.returncode == 0:
+            # Whisper создаёт файл с именем исходного файла + .srt
+            base_name = os.path.splitext(os.path.basename(audio_path))[0]
+            srt_path = os.path.join(output_dir, f"{base_name}.srt")
+
+            if os.path.exists(srt_path):
+                with open(srt_path, 'r', encoding='utf-8') as f:
+                    srt_content = f.read()
+
+                # Удаляем временный файл
+                os.unlink(srt_path)
+
+                print(f"[WHISPER] Successfully generated {len(srt_content)} bytes of subtitles")
+                return srt_content
+            else:
+                print(f"[WHISPER] SRT file not found: {srt_path}")
+                return ""
+        else:
+            print(f"[WHISPER] Error: {result.stderr}")
+            return ""
+
+    except Exception as e:
+        print(f"[WHISPER] Exception: {str(e)}")
+        return ""
+
+
+def generate_subtitles(text: str, duration: float, start_offset: float = 0.3) -> str:
     """
     Генерирует простые субтитры в формате SRT
     Разделяет текст на короткие фразы для лучшей читаемости
+    Добавляет небольшое смещение для учёта задержки TTS
 
     Args:
         text: Текст для субтитров
         duration: Общая длительность видео в секундах
+        start_offset: Начальное смещение в секундах (TTS обычно добавляет ~0.3-0.5с тишины)
 
     Returns:
         str: Содержимое SRT файла
@@ -134,13 +194,13 @@ def generate_subtitles(text: str, duration: float) -> str:
     # Затем разбиваем длинные предложения на короткие фразы (по запятым и союзам)
     phrases = []
     for sentence in sentences:
-        # Если предложение длинное (>60 символов), разбиваем его
-        if len(sentence) > 60:
-            # Разбиваем по запятым, союзам "и", "но", "а"
-            parts = sentence.replace(", ", ",|").replace(" и ", " и|").replace(" но ", " но|").replace(" а ", " а|").split("|")
+        # Если предложение длинное (>50 символов), разбиваем его
+        if len(sentence) > 50:
+            # Разбиваем по запятым, союзам "и", "но", "а", многоточиям
+            parts = sentence.replace(", ", ",|").replace("... ", "...|").replace(" и ", " и|").replace(" но ", " но|").replace(" а ", " а|").split("|")
             for part in parts:
                 part = part.strip()
-                if part:
+                if part and part != "...":  # Пропускаем чистые паузы
                     phrases.append(part)
         else:
             phrases.append(sentence)
@@ -148,13 +208,17 @@ def generate_subtitles(text: str, duration: float) -> str:
     if not phrases:
         return ""
 
+    # Вычитаем смещение и небольшой отступ в конце
+    usable_duration = max(duration - start_offset - 0.2, 1.0)
+
     # Рассчитываем время для каждой фразы
-    time_per_phrase = duration / len(phrases)
+    time_per_phrase = usable_duration / len(phrases)
 
     srt_content = ""
     for i, phrase in enumerate(phrases):
-        start_time = i * time_per_phrase
-        end_time = (i + 1) * time_per_phrase
+        # Добавляем смещение ко всем временам
+        start_time = start_offset + (i * time_per_phrase)
+        end_time = start_offset + ((i + 1) * time_per_phrase)
 
         # Форматируем время в формат SRT: HH:MM:SS,mmm
         start_str = format_srt_time(start_time)

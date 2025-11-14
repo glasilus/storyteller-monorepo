@@ -160,8 +160,8 @@ async def create_slideshow_video(
             # ОПТИМИЗАЦИЯ: Агрессивно сжимаем изображение
             img = Image.open(temp_img.name)
 
-            # Размещаем картинку в верхней части экрана (60% высоты)
-            overlay_height = int(video_height * 0.6)
+            # Размещаем картинку в верхней части экрана (50% высоты, чтобы не закрывать субтитры внизу)
+            overlay_height = int(video_height * 0.5)
             overlay_width = int(overlay_height * img.width / img.height)
 
             # ОПТИМИЗАЦИЯ: Используем BILINEAR вместо LANCZOS (быстрее и меньше памяти)
@@ -380,9 +380,9 @@ def build_video_with_ffmpeg(
         for i, img_info in enumerate(images):
             img_input_idx = i + 1  # Индексы входов: 0 - фон, 1+ - изображения
 
-            # Позиция Y (центрируем вертикально - в середине экрана)
-            # Оставляем место снизу для фона (40% высоты для изображения)
-            y_pos = int(video_height * 0.15)  # Начинаем с 15% от верха
+            # Позиция Y - размещаем в верхней части экрана
+            # Оставляем ~50% внизу для фона и субтитров
+            y_pos = int(video_height * 0.05)  # Начинаем с 5% от верха (очень близко к верху)
 
             # Позиция X (центрируем по горизонтали)
             x_pos = (video_width - img_info["width"]) // 2
