@@ -12,7 +12,19 @@ RUN apt-get update && apt-get install -y \
     libswscale-dev \
     libswresample-dev \
     pkg-config \
+    fontconfig \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
+
+# Создаём директорию для шрифтов
+RUN mkdir -p /usr/share/fonts/truetype/custom
+
+# Копируем шрифт Impact если есть (положите impact.ttf в backend/fonts/)
+# Если файла нет - будет использован Arial Bold из fonts-liberation
+COPY fonts/impact.ttf /usr/share/fonts/truetype/custom/impact.ttf || true
+
+# Обновляем кэш шрифтов
+RUN fc-cache -fv
 
 # Устанавливаем рабочую директорию
 WORKDIR /app

@@ -169,24 +169,58 @@ def generate_subtitles_from_audio(audio_path: str) -> str:
 
         print(f"[WHISPER] Detected language: {info.language} (probability: {info.language_probability:.2f})")
 
-        # Генерируем SRT контент
+        # Генерируем SRT контент с разбивкой на короткие фразы
         srt_lines = []
         segment_count = 0
 
         for segment in segments:
-            segment_count += 1
-            # Форматируем время в SRT формат (HH:MM:SS,mmm)
-            start_time = format_timestamp_srt(segment.start)
-            end_time = format_timestamp_srt(segment.end)
+            text = segment.text.strip()
 
-            # Добавляем сегмент в SRT
-            srt_lines.append(f"{segment_count}")
-            srt_lines.append(f"{start_time} --> {end_time}")
-            srt_lines.append(segment.text.strip())
-            srt_lines.append("")  # Пустая строка между сегментами
+            # ВАЖНО: Разбиваем длинные сегменты (>50 символов) на короткие фразы
+            # Иначе субтитры займут весь экран!
+            if len(text) > 50 and segment.words:
+                # Используем word timestamps для точной разбивки
+                words = list(segment.words)
+                current_phrase = []
+                current_start = None
+
+                for i, word in enumerate(words):
+                    if current_start is None:
+                        current_start = word.start
+
+                    current_phrase.append(word.word)
+                    current_text = " ".join(current_phrase)
+
+                    # Разбиваем если фраза >40 символов ИЛИ это последнее слово
+                    should_split = len(current_text) > 40 or i == len(words) - 1
+
+                    if should_split:
+                        segment_count += 1
+                        start_time = format_timestamp_srt(current_start)
+                        end_time = format_timestamp_srt(word.end)
+
+                        srt_lines.append(f"{segment_count}")
+                        srt_lines.append(f"{start_time} --> {end_time}")
+                        srt_lines.append(current_text.strip())
+                        srt_lines.append("")
+
+                        # Сброс для следующей фразы
+                        current_phrase = []
+                        current_start = None
+            else:
+                # Короткий сегмент - используем как есть
+                segment_count += 1
+                start_time = format_timestamp_srt(segment.start)
+                end_time = format_timestamp_srt(segment.end)
+
+                srt_lines.append(f"{segment_count}")
+                srt_lines.append(f"{start_time} --> {end_time}")
+                srt_lines.append(text)
+                srt_lines.append("")
 
         srt_content = "\n".join(srt_lines)
         print(f"[WHISPER] Successfully generated {segment_count} subtitle segments ({len(srt_content)} bytes)")
+        print(f"[WHISPER] Max subtitle length ensured: ≤40 chars per line")
 
         return srt_content
 

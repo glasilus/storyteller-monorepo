@@ -390,13 +390,13 @@ def build_video_with_ffmpeg(
             # Экранируем путь для ffmpeg
             escaped_subtitle_path = subtitle_path.replace('\\', '/').replace(':', '\\\\:')
             # Субтитры в стиле TikTok/YouTube Shorts:
-            # - Impact шрифт (жирный, читаемый)
-            # - FontSize=24 (средний размер для 9:16)
-            # - Белый текст с чёрной обводкой (Outline=3)
+            # - Impact шрифт (ВАЖНО: должен быть установлен в системе)
+            # - FontSize=18 (уменьшен с 24 для лучшей читаемости)
+            # - Белый текст с чёрной обводкой (Outline=2)
             # - Центрирование по низу (Alignment=2)
-            # - MarginV=80 (большой отступ снизу для безопасной зоны)
-            # - MarginL/MarginR=40 (отступы по бокам чтобы не обрезалось)
-            subtitle_on_bg = f"[bg_raw]subtitles='{escaped_subtitle_path}':force_style='FontName=Impact,FontSize=24,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BackColour=&H00000000&,Bold=1,Outline=3,Shadow=0,Alignment=2,MarginV=80,MarginL=40,MarginR=40'[bg]"
+            # - MarginV=120 (увеличен отступ снизу чтобы НЕ перекрывать слайдшоу)
+            # - MarginL/MarginR=30 (отступы по бокам)
+            subtitle_on_bg = f"[bg_raw]subtitles='{escaped_subtitle_path}':force_style='FontName=Impact,FontSize=18,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BackColour=&H00000000&,Bold=1,Outline=2,Shadow=0,Alignment=2,MarginV=120,MarginL=30,MarginR=30'[bg]"
             filter_parts.append(subtitle_on_bg)
         else:
             # Если нет субтитров - просто переименовываем label
@@ -479,8 +479,8 @@ def build_video_with_ffmpeg(
             "-crf", "28",                 # Более высокое сжатие (23 по умолчанию, 28 = меньше размер)
             "-movflags", "+faststart",    # Для веб-стриминга
             "-pix_fmt", "yuv420p",        # Совместимость
-            "-r", "24",                   # FPS
-            "-t", str(total_duration),    # Длительность
+            "-r", "30",                   # FPS - увеличено до 30 для плавности
+            "-shortest",                  # ВАЖНО: останавливаем когда заканчивается КРАТЧАЙШИЙ вход (предотвращает обрезку)
             "-threads", "2",              # КРИТИЧНО: ограничиваем потоки до 2 (меньше памяти)
             "-max_muxing_queue_size", "1024",  # Уменьшаем буфер
             output_path
