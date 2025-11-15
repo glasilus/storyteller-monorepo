@@ -16,15 +16,15 @@ RUN apt-get update && apt-get install -y \
     fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
-# Создаём директорию для шрифтов
+# Создаём директорию для кастомных шрифтов
 RUN mkdir -p /usr/share/fonts/truetype/custom
 
-# Копируем шрифт Impact если есть (положите impact.ttf в backend/fonts/)
-# Если файла нет - будет использован Arial Bold из fonts-liberation
-COPY fonts/impact.ttf /usr/share/fonts/truetype/custom/impact.ttf || true
+# Копируем все файлы из папки fonts (включая README.md)
+# Если хотите использовать Impact - положите impact.ttf в backend/fonts/
+COPY fonts/ /usr/share/fonts/truetype/custom/
 
-# Обновляем кэш шрифтов
-RUN fc-cache -fv
+# Обновляем кэш шрифтов (игнорируем ошибки если нет .ttf файлов)
+RUN fc-cache -fv || true
 
 # Устанавливаем рабочую директорию
 WORKDIR /app
