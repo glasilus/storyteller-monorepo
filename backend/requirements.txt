@@ -53,4 +53,6 @@ yarl==1.22.0
 # moviepy==1.0.3  # REMOVED: Too memory-heavy for 512MB limit, replaced with direct ffmpeg
 gTTS==2.5.4
 Pillow==11.0.0
+openai-whisper==20231117  # Для генерации субтитров из аудио
+# ffmpeg и ffprobe устанавливаются системно через apt-get в render-build.sh
 

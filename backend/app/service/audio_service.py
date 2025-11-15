@@ -138,10 +138,13 @@ def generate_subtitles_from_audio(audio_path: str) -> str:
         cmd = [
             "whisper",
             audio_path,
-            "--model", "tiny",  # tiny - быстрая модель, достаточно для русского
+            "--model", "base",  # base - лучший баланс скорости/точности
             "--language", "ru",
             "--output_format", "srt",
-            "--output_dir", output_dir
+            "--output_dir", output_dir,
+            "--word_timestamps", "True",  # Точная синхронизация по словам
+            "--prepend_punctuations", "\"¿([{-",
+            "--append_punctuations", "\".,!?:)]}"
         ]
 
         print(f"[WHISPER] Running command: {' '.join(cmd)}")
@@ -173,16 +176,16 @@ def generate_subtitles_from_audio(audio_path: str) -> str:
         return ""
 
 
-def generate_subtitles(text: str, duration: float, start_offset: float = 0.3) -> str:
+def generate_subtitles(text: str, duration: float, start_offset: float = 0.1) -> str:
     """
     Генерирует простые субтитры в формате SRT
     Разделяет текст на короткие фразы для лучшей читаемости
-    Добавляет небольшое смещение для учёта задержки TTS
+    Добавляет минимальное смещение для учёта задержки TTS
 
     Args:
         text: Текст для субтитров
         duration: Общая длительность видео в секундах
-        start_offset: Начальное смещение в секундах (TTS обычно добавляет ~0.3-0.5с тишины)
+        start_offset: Начальное смещение в секундах (минимальное для лучшей синхронизации)
 
     Returns:
         str: Содержимое SRT файла

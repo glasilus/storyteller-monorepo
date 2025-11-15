@@ -368,8 +368,14 @@ def build_video_with_ffmpeg(
         if subtitle_path:
             # Экранируем путь для ffmpeg
             escaped_subtitle_path = subtitle_path.replace('\\', '/').replace(':', '\\\\:')
-            # Субтитры внизу экрана на фоне - с позицией снизу (MarginV=30)
-            subtitle_on_bg = f"[bg_raw]subtitles='{escaped_subtitle_path}':force_style='FontName=Arial,FontSize=20,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BackColour=&H80000000&,Bold=1,Outline=2,Shadow=1,Alignment=2,MarginV=30'[bg]"
+            # Субтитры в стиле TikTok/YouTube Shorts:
+            # - Impact шрифт (жирный, читаемый)
+            # - FontSize=24 (средний размер для 9:16)
+            # - Белый текст с чёрной обводкой (Outline=3)
+            # - Центрирование по низу (Alignment=2)
+            # - MarginV=80 (большой отступ снизу для безопасной зоны)
+            # - MarginL/MarginR=40 (отступы по бокам чтобы не обрезалось)
+            subtitle_on_bg = f"[bg_raw]subtitles='{escaped_subtitle_path}':force_style='FontName=Impact,FontSize=24,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BackColour=&H00000000&,Bold=1,Outline=3,Shadow=0,Alignment=2,MarginV=80,MarginL=40,MarginR=40'[bg]"
             filter_parts.append(subtitle_on_bg)
         else:
             # Если нет субтитров - просто переименовываем label
