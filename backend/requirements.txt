@@ -55,5 +55,4 @@ gTTS==2.5.4
 Pillow==11.0.0
 faster-whisper==1.0.3  # Оптимизированная версия Whisper (меньше памяти, быстрее)
 ffmpeg-python==0.2.0  # Python wrapper для ffmpeg
-imageio-ffmpeg==0.5.1  # Статические бинарники ffmpeg для Python (работает на Render)
 

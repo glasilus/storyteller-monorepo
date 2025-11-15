@@ -13,17 +13,26 @@ from typing import List, Dict
 from PIL import Image
 from app.db.supa_request import supabase
 
-# Для Render.com: используем статические бинарники ffmpeg из imageio-ffmpeg
-try:
-    import imageio_ffmpeg
-    FFMPEG_BINARY = imageio_ffmpeg.get_ffmpeg_exe()
-    FFPROBE_BINARY = imageio_ffmpeg.get_ffmpeg_exe().replace('ffmpeg', 'ffprobe')
-    print(f"[VIDEO] Using imageio-ffmpeg binaries: {FFMPEG_BINARY}")
-except ImportError:
-    # Локальная разработка - используем системные
+# Определяем путь к ffmpeg/ffprobe
+# Приоритет: системный (Docker) -> imageio-ffmpeg (локальная разработка Windows)
+import shutil
+
+if shutil.which("ffmpeg"):
+    # Docker или Linux с установленным ffmpeg
     FFMPEG_BINARY = "ffmpeg"
     FFPROBE_BINARY = "ffprobe"
     print(f"[VIDEO] Using system ffmpeg/ffprobe")
+else:
+    # Локальная разработка без системного ffmpeg - используем imageio-ffmpeg
+    try:
+        import imageio_ffmpeg
+        FFMPEG_BINARY = imageio_ffmpeg.get_ffmpeg_exe()
+        FFPROBE_BINARY = imageio_ffmpeg.get_ffmpeg_exe().replace('ffmpeg', 'ffprobe')
+        print(f"[VIDEO] Using imageio-ffmpeg binaries: {FFMPEG_BINARY}")
+    except ImportError:
+        FFMPEG_BINARY = "ffmpeg"
+        FFPROBE_BINARY = "ffprobe"
+        print(f"[VIDEO] WARNING: No ffmpeg found, will try system commands")
 
 
 def download_from_supabase_or_url(url: str, file_name_hint: str = None) -> bytes:
