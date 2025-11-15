@@ -274,7 +274,8 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed, reactive } from 'vue'
+import { onMounted, ref, computed, reactive, onUnmounted } from 'vue'
+import { usePolling } from '~/composables/usePolling'
 import { useRoute } from 'vue-router'
 import { useApi } from '~/composables/useApi'
 import { useSupabaseAuth } from '~/composables/useSupabaseAuth'
