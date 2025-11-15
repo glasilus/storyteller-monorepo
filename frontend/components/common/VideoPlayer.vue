@@ -11,7 +11,7 @@
     <!-- Видео плеер -->
     <video
       controls
-      class="w-full max-h-96 rounded-lg bg-black"
+      class="w-full max-h-96 rounded-xl bg-slate-900/50 border border-slate-700/40 shadow-lg hover:shadow-xl transition-shadow"
       @error="handleVideoError"
       @loadeddata="handleVideoLoaded"
     >
@@ -90,6 +90,13 @@ const handleVideoLoaded = () => {
 </script>
 
 <style scoped>
+video::-webkit-media-controls-panel {
+  background: linear-gradient(to bottom, rgba(15, 11, 31, 0.8), rgba(15, 11, 31, 0.9)) !important;
+}
+video::-webkit-media-controls-time-remaining-display,
+video::-webkit-media-controls-current-time-display {
+  color: #fde047 !important;
+}
 .fade-in-up {
   animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;

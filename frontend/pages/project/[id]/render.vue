@@ -64,7 +64,7 @@
       <RenderSteps :current-status="renderStatus" class="mb-6" />
 
       <!-- Предупреждение: нет изображений -->
-      <div v-if="!hasGeneratedImages" class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-5 mb-6 border border-slate-700/50">
+      <div v-if="!hasGeneratedImages" class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-5 mb-6 border border-slate-700/50 fade-in-up" style="animation-delay: 0.1s">
         <div class="flex gap-3">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-yellow-400 flex-shrink-0">
             <circle cx="12" cy="12" r="10" />
@@ -85,8 +85,16 @@
       </div>
 
       <!-- Предпросмотр сценария -->
-      <div v-if="project?.scenes && project.scenes.length > 0" class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-700/50">
-        <h2 class="text-xl font-bold text-slate-100 mb-4">📋 Предпросмотр сценария</h2>
+      <div v-if="project?.scenes && project.scenes.length > 0" class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-700/50 fade-in-up" style="animation-delay: 0.2s">
+        <h2 class="text-xl font-bold text-slate-100 mb-4 flex items-center gap-2">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+            <path d="M8 8h8" />
+            <path d="M8 12h6" />
+            <path d="M8 16h5" />
+          </svg>
+          Предпросмотр сценария
+        </h2>
         <div class="space-y-3 max-h-64 overflow-y-auto">
           <div
             v-for="scene in project.scenes"
@@ -101,7 +109,7 @@
       </div>
       
       <!-- Шаг 1: Озвучка -->
-      <div class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-700/50">
+      <div class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-700/50 fade-in-up" style="animation-delay: 0.3s">
         <h2 class="text-xl font-bold text-slate-100 mb-4">Шаг 1: Генерация озвучки</h2>
 
         <button
@@ -110,21 +118,23 @@
           @click="generateVoiceover"
           :disabled="!project?.scenes || project.scenes.length === 0"
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="mr-2">
-            <path d="M12 3v6m0 0l4-4m-4 4l-4-4" />
-            <circle cx="12" cy="15" r="8" />
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="23" />
+            <line x1="8" y1="23" x2="16" y2="23" />
           </svg>
           Сгенерировать озвучку
         </button>
 
         <!-- Прогресс-бар в виде "мазка кисти" -->
         <div v-else-if="isGeneratingAudio" class="space-y-3">
-          <div class="text-slate-200">Генерируется озвучка...</div>
+          <div class="text-slate-200">Озвучиваем...</div>
           <div class="h-2.5 bg-slate-700/50 rounded-full overflow-hidden relative">
             <div class="absolute inset-0 bg-gradient-to-r from-yellow-400/20 to-blue-500/20"></div>
             <div class="h-full bg-gradient-to-r from-yellow-400 to-blue-500 rounded-full animate-pulse-slow" style="width: 0%; animation: brushStroke 4s infinite;"></div>
           </div>
-          <p class="text-slate-400 text-sm">Это может занять до 30 секунд</p>
+          <p class="text-slate-400 text-sm">Это может занять до 40 секунд</p>
         </div>
 
         <AudioPlayer
@@ -146,7 +156,7 @@
       </div>
       
       <!-- Шаг 2: Выбор фона (с анимированными превью) -->
-      <div class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-700/50">
+      <div class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-700/50 fade-in-up" style="animation-delay: 0.4s">
         <h2 class="text-xl font-bold text-slate-100 mb-4">Шаг 2: Выбор фонового видео</h2>
         <p class="text-slate-400 text-sm mb-4">Выберите brainrot фон для вашего видео</p>
 
@@ -186,16 +196,8 @@
         </div>
       </div>
 
-      <!-- Индикатор прогресса рендера -->
-      <RenderProgress
-        v-if="status === 'processing' && progress > 0"
-        :progress="progress"
-        :progress-text="progressText"
-        class="mb-6"
-      />
-
       <!-- Шаг 3: Сборка видео -->
-      <div class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-700/50">
+      <div class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-6 mb-6 border border-slate-700/50 fade-in-up" style="animation-delay: 0.5s">
         <h2 class="text-xl font-bold text-slate-100 mb-4">Шаг 3: Сборка видео</h2>
 
         <div v-if="!hasGeneratedImages" class="bg-slate-800/40 backdrop-blur-sm rounded-xl p-4 mb-4 border border-slate-700/50">
@@ -253,7 +255,7 @@
         <VideoPlayer
           v-else-if="videoUrl && videoUrl !== ''"
           :video-url="videoUrl"
-          title="Готовое видео готово!"
+          title="Ваше видео готово!"
         />
 
         <!-- Ошибка -->
@@ -643,5 +645,13 @@ const getCurrentBackgroundName = computed(() => {
 }
 .animate-pulse-slow {
   animation: brushStroke 4s infinite;
+}
+.fade-in-up {
+  animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+@keyframes fade-in-up {
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

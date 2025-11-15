@@ -9,8 +9,7 @@
     </h3>
     <audio 
       controls 
-      class="w-full mt-2"
-      :class="audioStyle"
+      class="w-full mt-2 appearance-none bg-slate-800/50 border border-slate-700/50 rounded-lg p-2 hover:border-yellow-400/50 transition-colors"
     >
       <source :src="audioUrl" type="audio/mpeg">
       Ваш браузер не поддерживает аудио.

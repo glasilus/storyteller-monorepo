@@ -4,6 +4,11 @@
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
         <path d="M12 3v6m0 0l4-4m-4 4l-4-4" />
         <circle cx="12" cy="15" r="8" />
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <circle cx="15.5" cy="8.5" r="1.5" />
+        <circle cx="8.5" cy="15.5" r="1.5" />
+        <circle cx="15.5" cy="15.5" r="1.5" />
       </svg>
       Процесс сборки видео
     </h3>
@@ -17,7 +22,7 @@
       >
         <!-- SVG-иконка шага -->
         <div class="absolute left-0 top-3 w-5 h-5 rounded-full flex items-center justify-center">
-          <svg v-if="step.status === 'completed'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-green-400">
+          <svg v-if="step.status === 'completed' && currentStatus === 'completed'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-green-400">
             <path d="M9 12l2 2 4-4" />
           </svg>
           <div v-else-if="step.status === currentStatus" class="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"></div>
